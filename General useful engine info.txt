@@ -1,0 +1,3 @@
+How do levels work:
+1) Entity's tag (the first one) is used to identify sprite's path (it should be the same as file's name (without extension)),
+2) If there's no tag, identifier name is used to identify entity's purpose (for example, SpawnPoint).

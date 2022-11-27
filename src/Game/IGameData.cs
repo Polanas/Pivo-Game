@@ -1,0 +1,5 @@
+﻿namespace Game;
+
+interface IGameData
+{
+}

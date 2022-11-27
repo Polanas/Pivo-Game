@@ -1,0 +1,55 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net6.0</TargetFramework>
+    <RootNamespace>Game</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;0649</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;0649</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Content\Shaders\renderPixelatedNew\**" />
+    <Compile Remove="src\OpenGL\Shaders\**" />
+    <Compile Remove="Textures\**" />
+    <EmbeddedResource Remove="Content\Shaders\renderPixelatedNew\**" />
+    <EmbeddedResource Remove="src\OpenGL\Shaders\**" />
+    <EmbeddedResource Remove="Textures\**" />
+    <None Remove="Content\Shaders\renderPixelatedNew\**" />
+    <None Remove="src\OpenGL\Shaders\**" />
+    <None Remove="Textures\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <PackageReference Include="OpenTK" Version="4.7.4" />
+    <PackageReference Include="StbImageSharp" Version="2.27.8" />
+    <PackageReference Include="StbImageWriteSharp" Version="1.16.7" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Box2DSharp">
+      <HintPath>..\..\..\Downloads\Box2DSharp-0.6\Box2DSharp-0.6\src\bin\Release\netstandard2.0\Box2DSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="LDtk">
+      <HintPath>..\LDtk\LDtk\bin\Release\net6.0\LDtk.dll</HintPath>
+    </Reference>
+    <Reference Include="LeoEcsLiteModified">
+      <HintPath>..\LeoEcsLiteModified\LeoEcsLiteModified\bin\Release\net6.0\LeoEcsLiteModified.dll</HintPath>
+    </Reference>
+    <Reference Include="SharpFont">
+      <HintPath>SharpFont.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>
