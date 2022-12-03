@@ -8,6 +8,7 @@ using Leopotam.EcsLite.Di;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
+using System.Data.Common;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -204,6 +205,7 @@ class MyGameWindow : GameWindow
         sharedData.gameData.Input = Input.New();
         sharedData.physicsData.contcactListener = new ContactListener();
         b2World.SetContactListener(sharedData.physicsData.contcactListener);
+        b2World.SetDebugDrawer(new PhysicsDebugDrawer(sharedData.renderData.debugDrawer, sharedData.physicsData.PTM));
 
         SharedData = sharedData;
 

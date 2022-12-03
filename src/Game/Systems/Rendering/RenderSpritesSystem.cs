@@ -32,7 +32,7 @@ class RenderSpritesSystem : RenderSystem
     public void DrawLine(Vector2 start, Vector2 end, Vector3i color, float thickness)
     {
         _batcher.DrawTexture(_rectangleTexture,
-                             Layer.Middle,
+                             Layer.Front,
                              null,
                              (start + end) / 2,
                              color,
@@ -46,7 +46,7 @@ class RenderSpritesSystem : RenderSystem
     public void DrawRect(Vector2 position, Vector3i color, Vector2 size, float angle)
     {
         _batcher.DrawTexture(_rectangleTexture,
-                             Layer.Middle,
+                             Layer.Front,
                              null,
                              position,
                              color,

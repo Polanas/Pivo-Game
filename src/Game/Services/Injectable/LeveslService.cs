@@ -1,10 +1,19 @@
 ﻿using ldtk;
 using Leopotam.EcsLite.Di;
+using OpenTK.Graphics.ES20;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace Game;
+
+enum LoadingMode
+{
+    Tiles,
+    Entities,
+    Everything
+}
 
 class LevelsService : MyInjectableService
 {
@@ -32,6 +41,8 @@ class LevelsService : MyInjectableService
 
     private const float TILE_SIZE = 8;
 
+    private const int MAX_LOADING_TIME = 10;
+
     private const string START_LEVEL_NAME = "Start";
 
     private EcsPool<Renderable> _renderables;
@@ -46,6 +57,12 @@ class LevelsService : MyInjectableService
 
     private EcsFilter _levelObjectsFilter;
 
+    private EcsFilter _oldLevelObjectsFilter;
+
+    private Stopwatch _clearingOldLevelStopWatch;
+
+    private CoroutineRunner _runner;
+
     public override void Init(EcsSystems systems)
     {
         base.Init(systems);
@@ -57,11 +74,19 @@ class LevelsService : MyInjectableService
         _staticBodiesFilter = world.Filter<StaticBody>().End();
         _dynamicBodiesFilter = world.Filter<DynamicBody>().End();
         _levelObjectsFilter = world.Filter<LevelObject>().End();
+        _oldLevelObjectsFilter = world.Filter<OldLevelObject>().End();
 
         SubLevelsTransforms = new();
+        _clearingOldLevelStopWatch = new();
+        _runner = new();
     }
 
-    public void SetLevel(string filename)
+    public void Update(float deltaTime)
+    {
+        _runner.Update(deltaTime);
+    }
+
+    public void SetLevel(string filename, LoadingMode mode)
     {
         var ldtkJson = LdtkJson.FromJson(File.ReadAllText(filename));
         CurrentLevel = new Level(ldtkJson);
@@ -78,7 +103,7 @@ class LevelsService : MyInjectableService
                 subLevelWasSet = true;
 
                 WorldSize = new Vector2(ldtkJson.WorldGridWidth.Value, ldtkJson.WorldGridHeight.Value);
-                SetSublevel(subLevel);
+                SetSublevel(subLevel, mode, true);
             }
 
             float halfSizeX = subLevel.PxWid / 2;
@@ -91,17 +116,19 @@ class LevelsService : MyInjectableService
         }
     }
 
-    public void SetSublevel(Sublevel subLevel)
+    public void SetSublevel(Sublevel subLevel, LoadingMode mode, bool resetSubLevel)
     {
-        ClearEntities();
-
-        CurrentSubLevel = subLevel;
+        if (resetSubLevel)
+            CurrentSubLevel = subLevel;
 
         foreach (var layer in subLevel.LayerInstances)
         {
             switch (layer.Type)
             {
                 case "IntGrid":
+
+                    if (mode != LoadingMode.Everything && mode != LoadingMode.Tiles)
+                        continue;
 
                     foreach (var tile in layer.AutoLayerTiles)
                     {
@@ -130,6 +157,9 @@ class LevelsService : MyInjectableService
                     }
                     break;
                 case "Entities":
+
+                    if (mode != LoadingMode.Everything && mode != LoadingMode.Entities)
+                        continue;
 
                     foreach (var ldtkEntity in layer.EntityInstances)
                     {
@@ -191,6 +221,9 @@ class LevelsService : MyInjectableService
             }
         }
 
+        if (mode != LoadingMode.Tiles && mode != LoadingMode.Everything)
+            return;
+
         _tileData = _tileData.OrderBy(td => -td.posStart.Y).ThenBy(td => td.posStart.X).ToList();
 
         Vector2 startPos, endPos, lastPos;
@@ -236,17 +269,18 @@ class LevelsService : MyInjectableService
         _tileData.Clear();
     }
 
-    private void ClearEntities()
+    public void MarkOldLevelObjects()
     {
+        var oldObjectsPool = world.GetPool<OldLevelObject>();
+
         foreach (var entity in _levelObjectsFilter)
         {
-            world.DelEntity(entity);
+            oldObjectsPool.Add(entity);
         }
 
         foreach (var entity in _staticBodiesFilter)
         {
-            sharedData.physicsData.physicsFactory.RemoveStaticBody(entity);
-            world.DelEntity(entity);
+            oldObjectsPool.Add(entity);
         }
 
         var dynamicBodes = world.GetPool<DynamicBody>();
@@ -256,8 +290,50 @@ class LevelsService : MyInjectableService
             if (body.box2DBody.GetUserData().bodyType == PhysicsBodyType.Player)
                 continue;
 
-            sharedData.physicsData.physicsFactory.RemoveDynamicBody(entity);
+            oldObjectsPool.Add(entity);
+        }
+    }
+
+    public void ClearOldLevelObjects() => _runner.Run(ClearOldLevelObjectsCoroutine());
+
+    private IEnumerator ClearOldLevelObjectsCoroutine()
+    {
+        _clearingOldLevelStopWatch.Start();
+
+        var staticBodiesPool = world.GetPool<StaticBody>();
+        var dynamicBodesPool = world.GetPool<DynamicBody>();
+
+        foreach (var entity in _oldLevelObjectsFilter)
+        {
+            if (IsLoadingTooLong(_clearingOldLevelStopWatch))
+            {
+                _clearingOldLevelStopWatch.Reset();
+                yield return null;
+            }
+
+            if (staticBodiesPool.Has(entity))
+            {
+                sharedData.physicsData.physicsFactory.RemoveStaticBody(entity);
+                world.DelEntity(entity);
+                continue;
+            }
+
+            if (dynamicBodesPool.Has(entity))
+            {
+                var bodyType = dynamicBodesPool.Get(entity).box2DBody.GetUserData().bodyType;
+
+                if (bodyType == PhysicsBodyType.Player || bodyType == PhysicsBodyType.TongueSensor)
+                    continue;
+
+                sharedData.physicsData.physicsFactory.RemoveDynamicBody(entity);
+                world.DelEntity(entity);
+
+                continue;
+            }
+
             world.DelEntity(entity);
         }
     }
+
+    private bool IsLoadingTooLong(Stopwatch watch) => watch.ElapsedMilliseconds > MAX_LOADING_TIME;
 }

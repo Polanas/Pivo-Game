@@ -54,6 +54,7 @@ class CameraSystem : MySystem
     {
         UpdateProjections();
 
+
         _camera.renderingPosition = new Vector2
         {
             X = MathF.Floor(_camera.position.X * MyGameWindow.FullToPixelatedRatio) / MyGameWindow.FullToPixelatedRatio,

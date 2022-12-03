@@ -11,82 +11,67 @@ namespace Game;
 
 delegate void ContactListenerEvent(Body body1, Body body2);
 
-record ContactEvent(ContactListenerEvent EventContactListener, PhysicsBodyType PhysicsUserData1, PhysicsBodyType PhysicsUserData2);
+record ContactEventData(ContactListenerEvent ContactEvent, PhysicsBodyType PhysicsUserData1, PhysicsBodyType PhysicsUserData2);
 
 class ContactListener : IContactListener
 {
-    private List<ContactEvent> _onBeginEvents = new();
+    private Dictionary<ContactEventData, bool> _onBeginEvents = new();
 
-    private List<ContactEvent> _onEndEvents = new();
+    private Dictionary<ContactEventData, bool> _onEndEvents = new();
 
-    private List<(PhysicsBodyType, PhysicsBodyType)> _onBeginEventsData = new();
+    private List<ContactEventData> _onBeginEventsList = new();
 
-    private List<(PhysicsBodyType, PhysicsBodyType)> _onEndEventsData = new();
+    private List<ContactEventData> _onEndEventsList = new();
 
-    public bool BeginEventExists(PhysicsBodyType userData1, PhysicsBodyType userData2) => _onBeginEventsData.Contains((userData1, userData2));
+    //private List<(PhysicsBodyType, PhysicsBodyType)> _onBeginEventsData = new();
 
-    public bool EndEventExists(PhysicsBodyType userData1, PhysicsBodyType userData2) => _onEndEventsData.Contains((userData1, userData2));
+    //private List<(PhysicsBodyType, PhysicsBodyType)> _onEndEventsData = new();
 
-    public bool BeginAndEndEventExists(PhysicsBodyType userData1, PhysicsBodyType userData2) => _onBeginEventsData.Contains((userData1, userData2));
-
-    public ContactListenerEventHandler AddBeginAndEndEvent(ContactListenerEvent beginContactListener, ContactListenerEvent endContactListener, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2)
+    public void AddBeginAndEndEvent(ContactListenerEvent beginEvent, ContactListenerEvent endEvent, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2, bool deletable)
     {
-        var beginContactEvent = new ContactEvent(beginContactListener, physicsUserData1, physicsUserData2);
-        var endContactEvent = new ContactEvent(endContactListener, physicsUserData1, physicsUserData2);
+        AddBeginEventInternal(beginEvent, physicsUserData1, physicsUserData2, deletable);
+        AddEndEventInternal(endEvent, physicsUserData1, physicsUserData2, deletable);
+    }
 
-        if (!_onBeginEventsData.Contains((physicsUserData1, physicsUserData2)))
+    public void AddBeginEvent(ContactListenerEvent beginEvent, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2, bool deletable)
+    {
+        AddBeginEventInternal(beginEvent, physicsUserData1, physicsUserData2, deletable);
+    }
+
+    public void AddEndEvent(ContactListenerEvent endEvent, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2, bool deletable)
+    {
+        AddEndEventInternal(endEvent, physicsUserData1, physicsUserData2, deletable);
+    }
+
+    public void ClearEvents()
+    {
+        for (int i = 0; i < _onBeginEventsList.Count; i++)
         {
-            _onBeginEvents.Add(beginContactEvent);
-            _onEndEvents.Add(endContactEvent);
+            var beginEvent = _onBeginEventsList[i];
+            var eventData = new ContactEventData(beginEvent.ContactEvent, beginEvent.PhysicsUserData1, beginEvent.PhysicsUserData1);
+
+            bool deletable = _onBeginEvents[eventData];
+
+            if (deletable)
+            {
+                _onBeginEvents.Remove(eventData);
+                _onBeginEventsList.RemoveAt(i);
+            }
         }
 
-        var handler = new ContactListenerEventHandler(beginContactEvent, endContactEvent, physicsUserData1, physicsUserData2);
-        return handler;
-    }
+        for (int i = 0; i < _onEndEvents.Count; i++)
+        {
+            var endEvent = _onEndEventsList[i];
+            var eventData = new ContactEventData(endEvent.ContactEvent, endEvent.PhysicsUserData1, endEvent.PhysicsUserData1);
 
-    public ContactListenerEventHandler AddBeginEvent(ContactListenerEvent contactListener, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2)
-    {
-        var contactEvent = new ContactEvent(contactListener, physicsUserData1, physicsUserData2);
+            bool deletable = _onEndEvents[eventData];
 
-        if (!_onBeginEventsData.Contains((physicsUserData1, physicsUserData2)))
-            _onBeginEvents.Add(contactEvent);
-
-        var handler = new ContactListenerEventHandler(contactEvent, null, physicsUserData1, physicsUserData2);
-        return handler;
-    }
-
-    public ContactListenerEventHandler AddEndEvent(ContactListenerEvent contactListener, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2)
-    {
-        var contactEvent = new ContactEvent(contactListener, physicsUserData1, physicsUserData2);
-
-        if (!_onBeginEventsData.Contains((physicsUserData1, physicsUserData2)))
-            _onEndEvents.Add(contactEvent);
-
-        var handler = new ContactListenerEventHandler(null, contactEvent, physicsUserData1, physicsUserData2);
-
-        return handler;
-    }
-
-    public void RemoveEndEvent(ContactListenerEventHandler contactListenerEventHandler)
-    {
-        _onEndEvents.Remove(contactListenerEventHandler.onEndEvent);
-        _onEndEventsData.Remove((contactListenerEventHandler.userData1, contactListenerEventHandler.userData2));
-    }
-
-    public void RemoveBeginEvent(ContactListenerEventHandler contactListenerEventHandler)
-    {
-        _onBeginEvents.Remove(contactListenerEventHandler.onBeginEvent);
-        _onBeginEventsData.Remove((contactListenerEventHandler.userData1, contactListenerEventHandler.userData2));
-    }
-
-    public void RemoveBeginAndEndEvent(ContactListenerEventHandler contactListenerEventHandler)
-    {
-        _onBeginEvents.Remove(contactListenerEventHandler.onBeginEvent);
-        _onEndEvents.Remove(contactListenerEventHandler.onEndEvent);
-
-        _onBeginEventsData.Remove((contactListenerEventHandler.userData1, contactListenerEventHandler.userData2));
-        _onEndEventsData.Remove((contactListenerEventHandler.userData1, contactListenerEventHandler.userData2));
-
+            if (deletable)
+            {
+                _onEndEvents.Remove(eventData);
+                _onEndEventsList.RemoveAt(i);
+            }
+        }
     }
 
     public void BeginContact(Contact contact)
@@ -97,12 +82,12 @@ class ContactListener : IContactListener
         for (int i = 0; i < _onBeginEvents.Count; i++)
         {
             var matches = UserDataMatches(((PhysicsUserData)fixture1.UserData).bodyType, ((PhysicsUserData)fixture2.UserData).bodyType,
-                                         _onBeginEvents[i].PhysicsUserData1, _onBeginEvents[i].PhysicsUserData2);
+                                         _onBeginEventsList[i].PhysicsUserData1, _onBeginEventsList[i].PhysicsUserData2);
 
             if (!matches)
                 continue;
 
-            _onBeginEvents[i].EventContactListener.Invoke(fixture2.Body, fixture1.Body);
+            _onBeginEventsList[i].ContactEvent.Invoke(fixture2.Body, fixture1.Body);
         }
     }
 
@@ -114,12 +99,34 @@ class ContactListener : IContactListener
         for (int i = 0; i < _onEndEvents.Count; i++)
         {
             var matches = UserDataMatches(((PhysicsUserData)fixture1.UserData).bodyType, ((PhysicsUserData)fixture2.UserData).bodyType,
-                                         _onEndEvents[i].PhysicsUserData1, _onEndEvents[i].PhysicsUserData2);
+                                         _onEndEventsList[i].PhysicsUserData1, _onEndEventsList[i].PhysicsUserData2);
 
             if (!matches)
                 continue;
 
-            _onEndEvents[i].EventContactListener.Invoke(fixture2.Body, fixture1.Body);
+            _onEndEventsList[i].ContactEvent.Invoke(fixture2.Body, fixture1.Body);
+        }
+    }
+
+    private void AddBeginEventInternal(ContactListenerEvent contactEvent, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2, bool deletable)
+    {
+        var contactEventData = new ContactEventData(contactEvent, physicsUserData1, physicsUserData2);
+
+        if (!_onBeginEvents.ContainsKey(contactEventData))
+        {
+            _onBeginEvents.Add(contactEventData, deletable);
+            _onBeginEventsList.Add(contactEventData);
+        }
+    }
+
+    private void AddEndEventInternal(ContactListenerEvent contactEvent, PhysicsBodyType physicsUserData1, PhysicsBodyType physicsUserData2, bool deletable)
+    {
+        var contactEventData = new ContactEventData(contactEvent, physicsUserData1, physicsUserData2);
+
+        if (!_onEndEvents.ContainsKey(contactEventData))
+        {
+            _onEndEvents.Add(contactEventData, deletable);
+            _onEndEventsList.Add(contactEventData);
         }
     }
 

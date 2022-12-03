@@ -30,13 +30,16 @@ class LevelsSystem : MySystem
 
     private EcsCustomInject<LevelsService> _levelsService;
 
+    public override void Run(EcsSystems systems)
+    {
+        _levelsService.Value.Update(sharedData.physicsData.deltaTime);
+    }
+
 
     public override void OnGroupActivate()
     {
         base.OnGroupActivate();
 
-        _levelsService.Value.SetLevel(Paths.Combine(Paths.LevelsDirectory, "level1.json"));
-
-     //   SetLevel(sharedData.gameData.levels["level1"]);
+        _levelsService.Value.SetLevel(Paths.Combine(Paths.LevelsDirectory, "level1.json"), LoadingMode.Everything);
     }
 }

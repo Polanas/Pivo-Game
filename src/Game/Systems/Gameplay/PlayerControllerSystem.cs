@@ -24,10 +24,14 @@ class PlayerControllerSystem : MySystem
             {
                 var playerOutOfSubLevel = pool.Get(e1);
 
-                playerInputs.SetEmptyKeyData();
-
-                if (!playerOutOfSubLevel.levelsSwitched)
+                if (playerOutOfSubLevel.time < .5f)
+                {
+                    playerInputs.SetEmptyKeyData();
                     playerInputs.SetDirectionKeyData(playerOutOfSubLevel.direction);
+                    return;
+                }
+
+                playerInputs.SetDefaultKeyData();
             }
         }
     }

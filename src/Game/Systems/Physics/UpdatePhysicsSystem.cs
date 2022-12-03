@@ -19,6 +19,8 @@ class UpdatePhysicsSystem : MySystem
 
     public override void Run(EcsSystems systems)
     {
+        sharedData.physicsData.b2World.DebugDraw();
+
         var pauseState = sharedData.eventBus.GetEventBodySingleton<PauseState>();
         if (pauseState.paused)
             return;

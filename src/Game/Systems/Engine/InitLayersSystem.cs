@@ -25,6 +25,7 @@ class InitLayersSystem : IEcsInitSystem
             sharedData.renderData.layers["middle"],
             sharedData.renderData.layers["backPixelized"],
             sharedData.renderData.layers["middlePixelized"],
-            sharedData.renderData.layers["ui"]);
+            sharedData.renderData.layers["ui"],
+            sharedData.renderData.layers["front"]);
     }
 }

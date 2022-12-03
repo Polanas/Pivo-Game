@@ -10,6 +10,8 @@ namespace Game;
 class Layer
 {
 
+    public static Layer Front { get; private set; }
+
     public static Layer Back { get; private set; }
 
     public static Layer Middle { get; private set; }
@@ -73,12 +75,13 @@ class Layer
         _screenTexture = new Texture(texture, size.X, size.Y, "layer");
     }
 
-    public static void InitLayers(Layer back, Layer middle, Layer backPixelized, Layer middlePixelized, Layer UILayer)
+    public static void InitLayers(Layer back, Layer middle, Layer backPixelized, Layer middlePixelized, Layer UILayer, Layer frontLayer)
     {
         Middle = middle;
         Back = back;
         BackPixelized = backPixelized;
         MiddlePixelized = middlePixelized;
         UI = UILayer;
+        Front = frontLayer;
     }
 }

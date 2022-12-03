@@ -2,7 +2,9 @@
 using Leopotam.EcsLite.Di;
 using OpenTK.Graphics.ES11;
 using OpenTK.Graphics.ES20;
+using OpenTK.Graphics.OpenGL;
 using System;
+using System.Diagnostics;
 
 namespace Game;
 
@@ -18,8 +20,6 @@ class SubLevelTransitionSystem : MySystem
 
     private EcsCustomInject<LevelsService> _levelService;
 
-    private EcsFilterInject<Inc<Transform, Player>> _playerFilter;
-
     private SubLevelTransition1Material _material;
 
     private StateMachine<SubLevelTransitionState> _stateMachine;
@@ -33,6 +33,8 @@ class SubLevelTransitionSystem : MySystem
     private int _playerEntity;
 
     private Random _rand;
+
+    private Sublevel _newSubLevel;
 
     public override void Init(EcsSystems systems)
     {
@@ -81,6 +83,12 @@ class SubLevelTransitionSystem : MySystem
 
         Graphics.DrawMaterial(sharedData.renderData.layers["front"], _material, sharedData.gameData.camera.renderingPosition, -1);
 
+        foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+        {
+            ref var playerOutOfSubLevel = ref pool.Get(e);
+            playerOutOfSubLevel.time = _time;
+        }
+
         if (_time > TRANSITION_FINISH_TIME)
             return SubLevelTransitionState.ChangingScreen;
 
@@ -92,6 +100,22 @@ class SubLevelTransitionSystem : MySystem
         _material.rand = _rand.NextSingle();
         _time = 0;
         _material.reverse = false;
+
+        _levelService.Value.MarkOldLevelObjects();
+
+        foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+        {
+            ref var playerOutOfSubLevel = ref pool.Get(e);
+            _newSubLevel = FindClosestSubLevel(playerOutOfSubLevel.playerTransform, out Vector2 direction);
+
+            if (_newSubLevel == null)
+            {
+                _stateMachine.ForceState(SubLevelTransitionState.Idle);
+                return;
+            }
+
+            _levelService.Value.SetSublevel(_newSubLevel, LoadingMode.Tiles, false);
+        }
     }
 
     private SubLevelTransitionState ChangingScreen()
@@ -102,6 +126,7 @@ class SubLevelTransitionSystem : MySystem
         if (_time >= TRANSITION_FINISH_TIME)
         {
             sharedData.eventBus.DestroyEvents<PlayerOutOfSubLevel>();
+            _levelService.Value.ClearOldLevelObjects();
             return SubLevelTransitionState.Idle;
         }
 
@@ -110,16 +135,10 @@ class SubLevelTransitionSystem : MySystem
 
     private void ChangingScreenBegin()
     {
-        _playerEntity = world.GetEntitiyWithComponent<Player>();
-        ref var body = ref world.GetComponent<DynamicBody>(_playerEntity);
-
         foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
         {
             ref var playerOutOfSubLevel = ref pool.Get(e);
-            var newSubLevel = FindClosestSubLevel(playerOutOfSubLevel.playerTransform, out Vector2 direction);
-            body.box2DBody.SetPosition(playerOutOfSubLevel.playerTransform.position + (playerOutOfSubLevel.playerTransform.size * 1.2f * direction));
-
-            _levelService.Value.SetSublevel(newSubLevel);
+            _levelService.Value.SetSublevel(_newSubLevel, LoadingMode.Entities, true);
 
             playerOutOfSubLevel.levelsSwitched = true;
         }
@@ -138,13 +157,6 @@ class SubLevelTransitionSystem : MySystem
     private Sublevel FindClosestSubLevel(Transform playerTransform, out Vector2 direction)
     {
         var neighbours = _levelService.Value.NeighourSubLevels;
-
-        if (neighbours.Length == 1)
-        {
-            var subLevel = _levelService.Value.SubLevelsByIIDs[neighbours[0].LevelIid];
-            direction = GetSubLevelDirection(neighbours[0].Dir);
-            return subLevel;
-        }
 
         Sublevel closestSubLevel = null;
         float closestDist = float.MaxValue;

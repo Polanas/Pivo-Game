@@ -60,7 +60,7 @@ class BeerSystem : MySystem
             beerBody.body.SetPosition(tongueSensor.GetPixelatedPosition());
             beerSprite.scale = MathF.Max(beerSprite.scale - sharedData.physicsData.fixedDeltaTime * 5, 0);
 
-            if (beerSprite.scale == 0)
+            if (beerSprite.scale <= 0)
             {
                 sharedData.physicsData.physicsFactory.RemoveStaticBody(beer);
                 Graphics.RemoveRenderable(beer);
@@ -97,7 +97,8 @@ class BeerSystem : MySystem
     {
         base.OnGroupActivate();
 
-       // BeerPrefab(world.NewEntity(), new Vector2(-9, -27));
+        BeerPrefab(world.NewEntity(), new Vector2(-9, -27));
+        //BeerPrefab(world.NewEntity(), new Vector2(-9, 27));
 
         _runner = new();
     }

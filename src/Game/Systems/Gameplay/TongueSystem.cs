@@ -67,7 +67,7 @@ class TongueSystem : MySystem
                     eatable1.beingConsumed = true;
                 },
                 (b2, b1) => SetTongueCollisionState((PhysicsUserData)b1.UserData, false),
-                PhysicsBodyType.TongueSensor, userdata);
+                PhysicsBodyType.TongueSensor, userdata, false);
         }
     }
 
@@ -86,7 +86,7 @@ class TongueSystem : MySystem
         sharedData.physicsData.contcactListener.AddBeginAndEndEvent(
             (Body b1, Body b2) => SetTongueCollisionState((PhysicsUserData)b1.UserData, true),
             (Body b1, Body b2) => SetTongueCollisionState((PhysicsUserData)b1.UserData, false),
-            PhysicsBodyType.TongueSensor, PhysicsBodyType.Block);
+            PhysicsBodyType.TongueSensor, PhysicsBodyType.Block, false);
 
         return tongue;
     }

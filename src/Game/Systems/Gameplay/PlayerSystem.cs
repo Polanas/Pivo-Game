@@ -55,8 +55,6 @@ class PlayerSystem : MySystem
 
     private readonly Vector2 _tongueOffset = new Vector2(6, -2 + 1 / MyGameWindow.FullToPixelatedRatio);
 
-    private ContactListenerEventHandler _eventHandler;
-
     private bool _isGrounded;
 
     private bool _canJump;
@@ -120,10 +118,12 @@ class PlayerSystem : MySystem
         _playerBody = world.GetComponent<DynamicBody>(player).box2DBody;
         _playerSprite = playerSprite;
 
-        _eventHandler = sharedData.physicsData.contcactListener.AddBeginAndEndEvent((Body b1, Body b2) => _isGrounded = true,
-                                                                                    (Body b1, Body b2) => _isGrounded = false,
+        sharedData.physicsData.contcactListener.AddBeginAndEndEvent((Body b1, Body b2) =>
+                                                                                    { _isGrounded = true; },
+                                                                                    (Body b1, Body b2) =>
+                                                                                    { _isGrounded = false; },
                                                                                     PhysicsBodyType.PlayerSensor,
-                                                                                    PhysicsBodyType.Block);
+                                                                                    PhysicsBodyType.Block, false);
 
         sharedData.physicsData.physicsFactory.AddSensor(_playerBody, playerSize, new(PhysicsBodyType.PlayerSensor));
         _noTongueAnimation = playerSprite.Current.Value.name;
@@ -229,7 +229,7 @@ class PlayerSystem : MySystem
         float horizontalSpeed = HORIZONTAL_SPEED * _speedXMultiplier;
 
         if (_playerSprite.flippedHorizontally)
-           horizontalSpeed *= -1;
+            horizontalSpeed *= -1;
 
         if (left)
         {
@@ -350,6 +350,17 @@ class PlayerSystem : MySystem
         if (pauseState.paused)
             return;
 
+        if (_playerInputs.left.Pressed)
+            _playerSprite.flippedHorizontally = true;
+        else if (_playerInputs.right.Pressed)
+            _playerSprite.flippedHorizontally = false;
+
+        if (_playerInputs.left.Down != _playerInputs.right.Down)
+            if (_playerInputs.left.Down && !_playerSprite.flippedHorizontally)
+                _playerSprite.flippedHorizontally = true;
+            else if (_playerInputs.right.Down && _playerSprite.flippedHorizontally)
+                _playerSprite.flippedHorizontally = false;
+
         foreach (var e in _tongueFilter.Value)
         {
             _tongueEntity = e;
@@ -362,18 +373,26 @@ class PlayerSystem : MySystem
             break;
         }
 
+        //if (sharedData.eventBus.HasEvents<PlayerOutOfSubLevel>())
+        //     _isGrounded = true; //TODO: fix this
+
         foreach (var e in _playerFilter.Value)
         {
+            ref var player = ref _playerFilter.Pools.Inc1.Get(e);
+            player.isGrounded = _isGrounded;
+
             var transform = _transformsPool.Value.Get(e);
 
             if (IsPlayerOutOfSubLevel(transform) && !sharedData.eventBus.HasEvents<PlayerOutOfSubLevel>())
             {
                 ref var playerOutOfSubLevel = ref sharedData.eventBus.NewEvent<PlayerOutOfSubLevel>();
                 playerOutOfSubLevel.playerTransform = transform;
-                playerOutOfSubLevel.direction = (sbyte)(_playerInputs.left.Down || _playerInputs.left.Released ? -1 : 1);
+                playerOutOfSubLevel.direction = (sbyte)(_playerBody.GetLinearVelocity().X < 0 ? -1 : 1);
+                playerOutOfSubLevel.isGrounded = _isGrounded;
 
                 _playerInputs.SetEmptyKeyData();
                 _playerInputs.SetDirectionKeyData(playerOutOfSubLevel.direction);
+                _coroutineRunner.Run(TransitionCoroutine());
             }
 
             break;
@@ -383,15 +402,6 @@ class PlayerSystem : MySystem
 
         _characterStateMachine.Update(sharedData.physicsData.fixedDeltaTime);
 
-        if (_playerInputs.left.Pressed)
-            _playerSprite.flippedHorizontally = true;
-        else if (_playerInputs.right.Pressed)
-             _playerSprite.flippedHorizontally = false;
-
-        if (_playerInputs.left.Down && !_playerSprite.flippedHorizontally)
-            _playerSprite.flippedHorizontally = true;
-        else if (_playerInputs.right.Down && _playerSprite.flippedHorizontally)
-            _playerSprite.flippedHorizontally = false;
 
         _coroutineRunner.Update(sharedData.physicsData.fixedDeltaTime);
 
@@ -422,6 +432,29 @@ class PlayerSystem : MySystem
         tongue.sensor.SetPosition(_playerBody.GetPixelatedPosition());
 
         return TongueState.Idle;
+    }
+
+    private IEnumerator TransitionCoroutine()
+    {
+        PlayerOutOfSubLevel playerOutOfSubLevel = default;
+
+        foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+            playerOutOfSubLevel = pool.Get(e);
+        
+
+        while (true)
+        {
+            if (!sharedData.eventBus.HasEvents<PlayerOutOfSubLevel>())
+                yield break;
+
+            if (playerOutOfSubLevel.isGrounded && !_isGrounded)
+            {
+                _isGrounded = true;
+                yield break;
+            }
+
+            yield return null;
+        }
     }
 
     private TongueState TongueOut()
@@ -551,8 +584,6 @@ class PlayerSystem : MySystem
         world.DelEntity(world.GetEntitiyWithComponent<Player>());
 
         GroupState.Set("PlayerCamera", false);
-
-        sharedData.physicsData.contcactListener.RemoveBeginAndEndEvent(_eventHandler);
 
         base.OnGroupDiactivate();
     }
