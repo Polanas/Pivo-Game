@@ -87,7 +87,8 @@ class ContactListener : IContactListener
             if (!matches)
                 continue;
 
-            _onBeginEventsList[i].ContactEvent.Invoke(fixture2.Body, fixture1.Body);
+            bool areInRightOrder = ((PhysicsUserData)fixture1.UserData).bodyType == _onBeginEventsList[i].PhysicsUserData1;
+            _onBeginEventsList[i].ContactEvent.Invoke(areInRightOrder ? fixture1.Body : fixture2.Body, areInRightOrder ? fixture2.Body : fixture1.Body);
         }
     }
 
@@ -104,7 +105,8 @@ class ContactListener : IContactListener
             if (!matches)
                 continue;
 
-            _onEndEventsList[i].ContactEvent.Invoke(fixture2.Body, fixture1.Body);
+            bool areInRightOrder = ((PhysicsUserData)fixture1.UserData).bodyType == _onEndEventsList[i].PhysicsUserData1;
+            _onEndEventsList[i].ContactEvent.Invoke(areInRightOrder ? fixture1.Body : fixture2.Body, areInRightOrder ? fixture2.Body : fixture1.Body);
         }
     }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Coroutines;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -42,6 +43,8 @@ class StateMachine<T>
     public T PreviousState { get; private set; }
 
     public T State => _state;
+
+    public CoroutineRunner CoroutineRunner => _coroutineRunner;
 
     public StateMachine(bool updateTwiceUponStateChange = false)
     {

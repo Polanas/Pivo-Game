@@ -239,6 +239,14 @@ class Shader
         GL.Uniform3(_uniformLocations[name], value);
     }
 
+    public void SetValue(string name, Vector3i value)
+    {
+        if (!_uniformLocations.ContainsKey(name))
+            return;
+
+        GL.Uniform3(_uniformLocations[name], value);
+    }
+
     public void SetValue(string name, Vector4 value)
     {
         if (!_uniformLocations.ContainsKey(name))

@@ -68,6 +68,13 @@ class RefList<T>
         Array.Sort(_items, comparer);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void Sort(Comparison<T> compartion)
+    {
+        Array.Sort(_items, compartion);
+    }
+
+
     public void Clear()
     {
         if (RuntimeHelpers.IsReferenceOrContainsReferences<T>())

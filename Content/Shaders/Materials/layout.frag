@@ -2,60 +2,49 @@
 
 layout (location = 0) out vec4 fragColor;
 
+struct vTex
+{
+	vec2 atlasPos;
+	vec2 size;
+};
+
 in vec2 fTexCoords;
+
+uniform float time;
+uniform sampler2D atlasTexture;
+
 in flat ivec3 fFrameData;
 in flat float fDepth;
 in flat vec4 fColor;
+in flat vec2 fAtlasPos;
 
-uniform sampler2D image;
-uniform vec2 quadSize;
-uniform float time;
+#define vTexture(uv) (texture(atlasTexture, uv))
 
-vec2 getFramePos(int index, int width)
+vec2 vTexUV(vec2 uv, vTex virtTex)
 {
-	 int x = index % width;
-     int y = (index - x) / width;
-
-     return vec2(x, y);
-}
-
-vec2 frameUV(ivec2 fFramesCount, int fCurrentFrame)
-{   
-    vec2 uv = fTexCoords;
-    vec2 frameSize = 1. / fFramesCount;
-   
-    uv.x = fract(uv.x/fFramesCount.x);
-    uv.y = fract(uv.y/fFramesCount.y);
-   
-    vec2 framePos = getFramePos(fCurrentFrame, fFramesCount.x);
-    uv += framePos*frameSize;
+    vec2 atlasSize = textureSize(atlasTexture, 0);
+    uv /= atlasSize;
+    vec2 atlasUVPos = virtTex.atlasPos / atlasSize;
+    uv *= virtTex.size;
+    uv += atlasUVPos;
 
     return uv;
 }
 
-void setDepth()
+void finish()
 {
-    gl_FragDepth = fragColor.a != 0. ? 1. - fDepth : 1.;
-}
+     if (fragColor.a <= 0)
+        discard;
 
-void tryDiscard(float alpha)
-{
-    if (alpha <= 0)
-     discard;
+     gl_FragDepth = fragColor.a != 0. ? 1. - fDepth : 1.;
 }
 
 
 void main()
 {
-	ivec2 fFramesCount = fFrameData.xy;
-    int fCurrentFrame = fFrameData.z;
+	vec4 texCol = vTexture(vTexUV(fTexCoords, vTex(fAtlasPos, fFrameData.xy)));
 
-	vec2 uv = floor(fTexCoords * textureSize(image, 0)) / textureSize(image, 0);
-	uv = frameUV(fFramesCount, fCurrentFrame);
+	fragColor = vec4(fColor.rgb/255, fColor.a) * texCol;
 
-	vec4 texCol = texture(image, uv) * vec4(fColor.rgb/255, fColor.a);
-    fragColor = texCol;
-
-    tryDiscard(fragColor.a);
-	setDepth();
-} 
+    finish();
+}

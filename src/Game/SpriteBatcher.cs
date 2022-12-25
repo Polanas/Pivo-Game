@@ -1,8 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Contracts;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Box2DSharp.Dynamics;
+using Leopotam.EcsLite.Di;
 using Newtonsoft.Json.Linq;
 using OpenTK.Graphics.OpenGL4;
 
@@ -18,19 +22,19 @@ struct Vertex
     public Vector2 projection2;
 
     [FieldOffset(24)]
-    public int textureIndex;
-
-    [FieldOffset(28)]
-    public float depth;
+    public Vector2 atlasPos;
 
     [FieldOffset(32)]
+    public float depth;
+
+    [FieldOffset(36)]
     public Vector4 color;
 
-    [FieldOffset(48)]
+    [FieldOffset(52)]
     public Vector3i frameData;
 }
 
-class SpriteBatcher
+class SpriteBatcher : InjectableService
 {
 
     public FrameBuffer FBO { get; private set; }
@@ -51,10 +55,13 @@ class SpriteBatcher
 
     private IComparer<SpriteBatchItem> _comparer = Comparer<SpriteBatchItem>.Create((x, y) =>
     {
-        if (x.depth != y.depth || (x.texture == null || y.texture == null))
+        if (x.depth != y.depth || x.texture == null || y.texture == null)
             return x.depth.CompareTo(y.depth);
 
-        return x.texture.Handle.CompareTo(y.texture.Handle);
+        if (x.texture is not Texture xTexture || y.texture is not Texture yTexture)
+            return 1;
+
+        return xTexture.Handle.CompareTo(yTexture.Handle);
     });
 
     private Dictionary<Type, List<MaterialFieldData>> _materialUniformFields;
@@ -63,229 +70,103 @@ class SpriteBatcher
 
     private Dictionary<UniformType, Action<Shader, string, object>> _setUniformFunctions;
 
-    private int _materialTextureUnit;
+    private int _materialTextureUnit = (int)TextureUnit.Texture2;
 
-    private int _lastTexture;
+    private int _currentTextureUnit = 1;
 
-    private int _currentTextureUnit;
-
-    private float _time;
-
-    private readonly int _currentMaxTexturesPerBatch;
+    private int _currentMaxTexturesPerBatch;
 
     private const int MAX_SPRITES_PER_RENDER = 5461;
 
-    private const int MAX_TEXTURES_PER_BATCH = 32;
+    private const int MAX_TEXTURES_PER_BATCH = 31;
+
+    private const float DEPTH_INCREMENT = 0.001f;
 
     private float _pixelRatio;
 
-    private Layer _lastLayer;
+    private Texture _atlasTexture;
 
-    public SpriteBatcher(Shader shader, List<Layer> layers, Dictionary<Layer, Matrix4> cameraProjections, Dictionary<Type, List<MaterialFieldData>> materialUniformFields, float pixelRatio)
-    {
-        _spriteBatchItems = new();
+    private Material _lastMaterial;
 
-        _shader = shader;
-        _layers = layers;
-        _materialUniformFields = materialUniformFields;
-        _cameraProjections = cameraProjections;
-        _pixelRatio = pixelRatio;
+    private int _veticesCount;
 
-        _vertices = new Vertex[4 * MAX_SPRITES_PER_RENDER];
+    private int _itemsCount;
 
-        _currentMaxTexturesPerBatch = Math.Min(GL.GetInteger(GetPName.MaxTextureImageUnits), MAX_TEXTURES_PER_BATCH);
+    private float _time;
 
-        Init();
-    }
+    private List<SpriteBatchItem> _currentItems;
 
     public void Render(float time)
     {
-        _time = time;
-
         if (_spriteBatchItems.Count == 0)
             return;
+
+        _time = time;
 
         _VAO.RenderBegin();
         FBO.Use();
 
         for (int i = 0; i < _layers.Count; i++)
         {
-            var layer = _layers[i];
-            if (layer.autoCleared)
-            {
-                FBO.UseAndClearTexture(layer.Texture, FramebufferAttachment.ColorAttachment0);
-            }
+            var currentLayer = _layers[i];
 
-            if (!_spriteBatchItems.ContainsKey(layer))
+            FBO.UseAndClearTexture(currentLayer.Texture, FramebufferAttachment.ColorAttachment0);
+
+            if (!_spriteBatchItems.ContainsKey(currentLayer))
                 continue;
 
-            var items = _spriteBatchItems[layer];
-            items.Sort(_comparer);
-
-            if (items.Count == 0)
+            _currentItems = _spriteBatchItems[currentLayer];
+            if (_currentItems.Count == 0)
                 continue;
 
-          //  if (_lastLayer == null || (_lastLayer.pixelated != layer.pixelated))
-            {
-                if (layer.pixelated)
-                    GL.Viewport(0, 0, 512, 512);
-                else GL.Viewport(new System.Drawing.Rectangle(0, 0, MyGameWindow.ScreenSize.X, MyGameWindow.ScreenSize.Y));
-            }
+            _currentItems.Sort(_comparer);
 
-            int batchIndex = 0;
-            int spritesToProcess;
-            int index = 0;
-            int processedSprites = 0;
+            if (currentLayer.pixelated)
+                OpenGL.SetViewport(Vector2i.Zero, currentLayer.Texture.Size);
+            else OpenGL.SetViewport(Vector2i.Zero, MyGameWindow.ScreenSize);
+
+            _veticesCount = 0;
+            _itemsCount = 0;
+
             float depth = 0;
 
-            for (int batchCount = items.Count; batchCount > 0; batchCount -= spritesToProcess)
+            for (int j = 0; j < _currentItems.Count; j++)
             {
-                spritesToProcess = Math.Min(batchCount, MAX_SPRITES_PER_RENDER);
+                var item = _currentItems[j];
 
-                int notProcessedSprites = 0;
-                SpriteBatchItem? item = null;
+                var currentMaterial = item.material;
 
-                var firstTexture = items[processedSprites].texture;
-                GL.ActiveTexture((TextureUnit)(_currentTextureUnit + (int)TextureUnit.Texture0));
+                if (currentMaterial != null && currentMaterial != _lastMaterial)
+                    Flush(currentLayer, null);
 
-                if (firstTexture != null)
-                {
-                    _lastTexture = firstTexture;
-                    firstTexture.Use();
-                }
+                depth += DEPTH_INCREMENT;
+                _itemsCount++;
 
-                for (int j = 0; j < spritesToProcess; j++)
-                {
-                    if (_currentTextureUnit == _currentMaxTexturesPerBatch)
-                    {
-                        notProcessedSprites = spritesToProcess - j;
-                        index = 0;
-                        break;
-                    }
+                FillVerices(item, depth);
+                if (item.texture is Texture texture)
+                    BindTexture(texture);
 
-                    item = items[batchIndex++];
+                if (_itemsCount > MAX_SPRITES_PER_RENDER
+                    || j == _currentItems.Count - 1 
+                    || (currentMaterial != null && currentMaterial != _lastMaterial)
+                    || _currentTextureUnit == 32)
+                    Flush(currentLayer, currentMaterial);
 
-                    if (item.Value.material != null)
-                    {
-                        notProcessedSprites = spritesToProcess - j;
-
-                        if (j > 0)
-                        {
-                            _shader.Use();
-                            _shader.SetValue("cameraMatrix", _cameraProjections[layer]);
-                            _VBO.UpdateData(_vertices);
-                            _VAO.RenderElements(spritesToProcess - notProcessedSprites);
-
-                            Array.Clear(_vertices);
-                        }
-
-                        index = 0;
-
-                        break;
-                    }
-
-                    var texture = item.Value.texture;
-                    if (_lastTexture != texture.Handle)
-                    {
-                        _currentTextureUnit++;
-                        GL.ActiveTexture((TextureUnit)(_currentTextureUnit + (int)TextureUnit.Texture0));
-                        texture.Use();
-
-                        _lastTexture = texture.Handle;
-                    }
-
-                    for (int k = 0; k < 4; k++)
-                        FillVertex(ref _vertices[index++], item.Value, depth, _currentTextureUnit);
-
-                    depth += 0.0001f;
-                }
-
-                processedSprites = spritesToProcess - notProcessedSprites;
-
-                if (item != null)
-                {
-                    if (item.Value.material == null)
-                    {
-                        _shader.Use();
-                        _shader.SetValue("cameraMatrix", _cameraProjections[layer]);
-                        _VBO.UpdateData(_vertices);
-                        _VAO.RenderElements(processedSprites);
-
-                        Array.Clear(_vertices);
-                    }
-                    else
-                    {
-                        batchCount--;
-
-                        var material = item.Value.material;
-
-                        if (material.TextureTarget != null)
-                            throw new InvalidDataException($"Attempt to render using a {material.GetType().Name} material with initialized TextureTarget");
-
-                        material.Shader.Use();
-                        material.Shader.SetValue("cameraMatrix", _cameraProjections[layer]);
-                        material.Shader.SetValue("time", _time);
-                        if (item.Value.texture != null)
-                        {
-                            GL.ActiveTexture(TextureUnit.Texture0);
-                            item.Value.texture.Use();
-                        }
-                        material.Shader.SetValue("quadSize", material.QuadSize);
-                        material.Shader.SetValue("pixelRatio", _pixelRatio);
-
-                        if (!_materialUniformFieldsCache.ContainsKey(material.Name))
-                            _materialUniformFieldsCache.Add(material.Name, _materialUniformFields[material.GetType()]);
-
-                        var materialDataList = _materialUniformFieldsCache[material.Name];
-
-                        for (int k = 0; k < materialDataList.Count; k++)
-                        {
-                            var materialData = materialDataList[k];
-                            var uniformType = materialData.uniformAttribute.uniformType;
-
-                            _setUniformFunctions[uniformType](material.Shader, materialData.uniformAttribute.uniformName, materialData.field.GetValue(material));
-                        }
-
-                        foreach (var pair in material.Textures)
-                        {
-                            material.Shader.UseTexture(pair.Key, pair.Value, (TextureUnit)_materialTextureUnit);
-                            _materialTextureUnit++;
-                        }
-
-                        for (int k = 0; k < 4; k++)
-                            FillVertex(ref _vertices[k], item.Value, depth, 0);
-                        depth += 0.001f;
-
-                        _VBO.UpdateData(_vertices);
-                        _VAO.RenderElements(1);
-
-                        Array.Clear(_vertices);
-
-                        processedSprites++;
-                        _materialTextureUnit = (int)TextureUnit.Texture1;
-                    }
-                }
-
-                _currentTextureUnit = 0;
-                _lastTexture = 0;
-
-                batchCount += notProcessedSprites;
+                _lastMaterial = currentMaterial;
             }
 
-            items.Clear();
-            _lastLayer = layer;
+            _currentItems.Clear();
         }
 
-        _VAO.RenderEnd();
-        FBO.UseDefault();
+        RenderEnd();
     }
 
-    public void DrawTexture(Texture texture, Layer layer, Material material, Vector2 position, Vector3 color, float alpha, Vector2 size, float angle, float depth, Vector2i offDir)
+    public void DrawTexture(ITexture texture, Layer layer, Material material, Vector2 position, Vector3 color, float alpha, Vector2 size, float angle, float depth, Vector2i offDir)
     {
         var frameInfo = new Vector3i(1, 1, 0);
         Vector4 color4 = new Vector4(color.X, color.Y, color.Z, alpha);
 
-        DrawInternal(layer,
+        Submit(layer,
                     material,
                     texture,
                     position,
@@ -298,15 +179,16 @@ class SpriteBatcher
 
     public void DrawSprite(Sprite sprite)
     {
-        var frameInfo = sprite.Texture == null ? new Vector3i(1, 1, 0) : new(sprite.TexWidth / sprite.FrameWidth,
-                                                                            sprite.TexHeight / sprite.FrameHeight,
-                                                                            sprite.Current == null ? sprite.Frame : sprite.Current.Value.frames[sprite.Frame]);
+        var frameInfo = Utils.GetFrameData(sprite.VirtualTexture,
+                                           new Vector2i(sprite.FrameWidth, sprite.FrameHeight),
+                                           sprite.Current == null ? sprite.Frame : sprite.Current.Value.frames[sprite.Frame]);
+
         var offDir = new Vector2i(Utils.BoolToInt(!sprite.flippedHorizontally), Utils.BoolToInt(!sprite.flippedVertically));
         Vector4 color = new Vector4(sprite.color.X, sprite.color.Y, sprite.color.Z, sprite.alpha);
 
-        DrawInternal(sprite.layer,
+        Submit(sprite.layer,
                     sprite.material == null || !sprite.material.IsApplying ? null : sprite.material,
-                    sprite.Texture,
+                    sprite.VirtualTexture,
                     sprite.position + sprite.offset,
                     color,
                     frameInfo,
@@ -315,12 +197,96 @@ class SpriteBatcher
                     sprite.depth);
     }
 
-    private void DrawInternal(Layer layer, Material material, Texture texture, Vector2 position, Vector4 color, Vector3i frameInfo, Vector2 size, float angle, float depth)
+    private void BindTexture(Texture texture)
     {
-        if (layer == Layer.MiddlePixelized)
-        {
+        GL.ActiveTexture(TextureUnit.Texture0 + _currentTextureUnit);
+        texture.Use();
+        _currentTextureUnit++;
+    }
 
+    private void FillVerices(SpriteBatchItem item, float depth)
+    {
+        var texture = item.texture;
+        bool isTexture = texture is Texture;
+        Vector2 atlasPos = Vector2.Zero;
+
+        if (texture != null)
+            atlasPos = isTexture ? new Vector2(_currentTextureUnit, -1) : (texture as VirtualTexture).FramesPositions[item.frameData.Z];
+        for (int k = 0; k < 4; k++)
+            FillVertex(ref _vertices[_veticesCount++],
+                       item,
+                       depth,
+                       atlasPos);
+    }
+
+    private void Flush(Layer layer, Material material)
+    {
+        var shader = material == null ? _shader : material.Shader;
+
+        shader.Use();
+        shader.UseTexture("atlasTexture", _atlasTexture, TextureUnit.Texture0);
+        shader.SetValue("cameraMatrix", _cameraProjections[layer]);
+        _VBO.UpdateData(_vertices);
+
+        if (material != null)
+            ApplyMaterial(material);
+
+        _VAO.RenderElements(_itemsCount);
+
+        _itemsCount = 0;
+        _veticesCount = 0;
+        _currentTextureUnit = 1;
+
+        Array.Clear(_vertices);
+    }
+
+    private void ApplyMaterial(Material material)
+    {
+        var shader = material.Shader;
+
+        shader.SetValue("time", _time);
+        shader.SetValue("quadSize", material.QuadSize);
+        shader.SetValue("pixelRatio", _pixelRatio);
+
+        if (!_materialUniformFieldsCache.ContainsKey(material.Name))
+            _materialUniformFieldsCache.Add(material.Name, _materialUniformFields[material.GetType()]);
+
+        var lastItem = _currentItems[_itemsCount - 1];
+
+        var materialDataList = _materialUniformFieldsCache[material.Name];
+
+        for (int k = 0; k < materialDataList.Count; k++)
+        {
+            var materialData = materialDataList[k];
+            var uniformType = materialData.uniformAttribute.uniformType;
+
+            _setUniformFunctions[uniformType](material.Shader, materialData.uniformAttribute.uniformName, materialData.field.GetValue(material));
         }
+
+        _materialTextureUnit = 1;
+        foreach (var pair in material.Textures)
+        {
+            if (pair.Value == null)
+                continue;
+
+            if (pair.Value is Texture texture)
+            {
+                shader.UseTexture(pair.Key, texture, (TextureUnit)_materialTextureUnit);
+                _materialTextureUnit++;
+                continue;
+            }
+
+            var virtualTexture = pair.Value as VirtualTexture;
+
+            shader.SetValue($"{pair.Key}.atlasPos", (Vector2)virtualTexture.AtlasPosition);
+            shader.SetValue($"{pair.Key}.size", (Vector2)virtualTexture.Size);
+        }
+    }
+
+    public void Submit(Layer layer, Material material, ITexture texture, Vector2 position, Vector4 color, Vector3i frameInfo, Vector2 size, float angle, float depth)
+    {
+        if (texture != null)
+            frameInfo = texture is Texture ? frameInfo : new Vector3i(((VirtualTexture)texture).Size, frameInfo.Z);
 
         Matrix4 model = MyMath.CreateTransformMatrix(position, size, angle);
 
@@ -336,18 +302,53 @@ class SpriteBatcher
                                      depth, color, frameInfo, texture, layer, material));
     }
 
-    private void FillVertex(ref Vertex vertex, SpriteBatchItem item, float depth, int textureUnit)
+    public void SubmitDirect(Layer layer, Material material, ITexture texture, Vector4 projection1, Vector2 projection2, Vector4 color, Vector3i frameInfo, float depth)
+    {
+        if (texture != null)
+            frameInfo = texture is Texture ? frameInfo : new Vector3i(((VirtualTexture)texture).Size, frameInfo.Z);
+
+        if (!_spriteBatchItems.ContainsKey(layer))
+            _spriteBatchItems[layer] = new List<SpriteBatchItem>();
+
+        var list = _spriteBatchItems[layer];
+        list.Add(new SpriteBatchItem(projection1,projection2,
+                                     depth, color, frameInfo, texture, layer, material));
+    }
+
+    private void FillVertex(ref Vertex vertex, SpriteBatchItem item, float depth, Vector2 atlasPos)
     {
         vertex.projection1 = item.projectionPart1;
         vertex.projection2 = item.projectionPart2;
-        vertex.textureIndex = textureUnit;
+        vertex.atlasPos = atlasPos;
         vertex.depth = depth;
         vertex.color = item.color;
         vertex.frameData = item.frameData;
     }
 
-    public void Init()
+    private void RenderEnd()
     {
+        _itemsCount = 0;
+        _veticesCount = 0;
+
+        _VAO.RenderEnd();
+        FBO.UseDefault();
+    }
+
+    public void Init(Shader shader, List<Layer> layers, Dictionary<Layer, Matrix4> cameraProjections, Dictionary<Type, List<MaterialFieldData>> materialUniformFields, float pixelRatio, Texture atlasTexture)
+    {
+        _spriteBatchItems = new();
+
+        _shader = shader;
+        _layers = layers;
+        _materialUniformFields = materialUniformFields;
+        _cameraProjections = cameraProjections;
+        _pixelRatio = pixelRatio;
+        _atlasTexture = atlasTexture;
+
+        _vertices = new Vertex[4 * MAX_SPRITES_PER_RENDER];
+
+        _currentMaxTexturesPerBatch = Math.Min(GL.GetInteger(GetPName.MaxTextureImageUnits), MAX_TEXTURES_PER_BATCH);
+
         uint[] indices = new uint[6 * MAX_SPRITES_PER_RENDER];
 
         uint index = 0;
@@ -373,7 +374,7 @@ class SpriteBatcher
         _VBO = new VertexBuffer(BufferUsageHint.DynamicDraw, 1);
         _VBO.SetAttribPointerType<float>();
         _VBO.SetStride<Vertex>(1);
-        _VBO.SetAttribPointers(4, 2, 1, 1, 4);
+        _VBO.SetAttribPointers(4, 2, 2, 1, 4);
         _VBO.SetAttribPointer<int>(3);
         _VBO.SetEmptyData<Vertex>(_vertices.Length);
         _VAO.SetVertexBuffer(_VBO);
@@ -396,6 +397,7 @@ class SpriteBatcher
             { UniformType.Vector4i, (Shader shader, string unfiromName, object value) => shader.SetValue(unfiromName, (Vector4)value) },
             { UniformType.Int, (Shader shader, string unfiromName, object value) => shader.SetValue(unfiromName, (int)value) },
             { UniformType.Bool, (Shader shader, string unfiromName, object value) => shader.SetValue(unfiromName, (bool)value) },
+            { UniformType.Matrix4, (Shader shader, string unfiromName, object value) => shader.SetValue(unfiromName, (Matrix4)value) },
         };
 
         _materialUniformFieldsCache = new();

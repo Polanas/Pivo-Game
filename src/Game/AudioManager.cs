@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using OpenTK.Audio.OpenAL;
-using OpenTK.Graphics.OpenGL;
-using System.Collections;
-using Coroutines;
+﻿using OpenTK.Audio.OpenAL;
 
 namespace Game;
 

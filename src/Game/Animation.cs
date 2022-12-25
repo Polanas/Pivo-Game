@@ -10,16 +10,16 @@ struct Animation
 {
     public string name;
 
-    public float speed;
+    public float delay;
 
     public bool loop;
 
     public int[] frames;
 
-    public Animation(string name, float speed, bool loop, int[] frames)
+    public Animation(string name, float delay, bool loop, int[] frames)
     {
         this.name = name;
-        this.speed = speed;
+        this.delay = delay;
         this.loop = loop;
         this.frames = frames;
     }
@@ -38,7 +38,7 @@ struct Animation
             return false;
 
         Animation a = (Animation)obj;
-        return a.name == name && a.speed == speed && a.loop == loop && Enumerable.SequenceEqual(a.frames, frames);
+        return a.name == name && a.delay == delay && a.loop == loop && Enumerable.SequenceEqual(a.frames, frames);
     }
 
     public override int GetHashCode() => GetHashCode();

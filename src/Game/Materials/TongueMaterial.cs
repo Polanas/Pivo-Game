@@ -20,7 +20,7 @@ class TongueMaterial : Material
 
     public TongueMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, @"tongue.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, @"tongue.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

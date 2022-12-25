@@ -9,7 +9,7 @@ namespace Game;
 class GameData : IGameData
 {
 
-    public Vector2 inGameMousePosition;
+    public Vector2 ingameMousePosition;
 
     public Input Input { get; set; }
 

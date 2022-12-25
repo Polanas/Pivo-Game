@@ -12,7 +12,5 @@ struct PlayerOutOfSubLevel : IEventReplicant
 
     public sbyte direction;
 
-    public bool oldLevelCleared;
-
-    public bool isGrounded;
+    public bool oldTilesRemoved;
 }

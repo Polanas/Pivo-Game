@@ -14,7 +14,7 @@ class SubLevelTransitionMaterial : Material
 
     public SubLevelTransitionMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, "subLevelTransition.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, "subLevelTransition.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

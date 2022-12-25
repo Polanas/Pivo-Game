@@ -2,18 +2,35 @@
 
 layout (location = 0) out vec4 fragColor;
 
+struct vTex
+{
+	vec2 atlasPos;
+	vec2 size;
+};
+
 in vec2 fTexCoords;
 in flat float fDepth;
+in flat vec2 fAtlasPos;
+in flat ivec3 fFrameData;
 
-uniform sampler2D image;
 uniform float time;
 uniform float seed;
 uniform float pixelRatio;
+uniform sampler2D atlasTexture;
 
-float frac(float n)
+#define vTexCol(uv) (texture(atlasTexture, uv))
+
+vec2 vTexUV(vec2 uv, vTex virtTex)
 {
-    return n - floor(n);
+    vec2 atlasSize = textureSize(atlasTexture, 0);
+    uv /= atlasSize;
+    vec2 atlasUVPos = virtTex.atlasPos / atlasSize;
+    uv *= virtTex.size;
+    uv += atlasUVPos;
+
+    return uv;
 }
+
 
 vec2 voronoiRandomVec(vec2 uv, float offset)
 {
@@ -46,35 +63,33 @@ void voronoi(vec2 uv, float angleOffset, float cellDensity, out float noise, out
     }
 }
 
-void setDepth()
+void tryDiscardAndSetDepth(float alpha)
 {
-    gl_FragDepth = fragColor.a != 0. ? 1. - fDepth : 1.;
-}
+     if (alpha <= 0)
+        discard;
 
-void tryDiscard(float alpha)
-{
-    if (alpha <= 0)
-     discard;
+     gl_FragDepth = 1. - fDepth;
 }
 
 void main() 
 {
-    vec2 quadSize = textureSize(image, 0);
-	vec2 uv = floor(fTexCoords * quadSize) / quadSize;
+    vec2 uv = vTexUV(fTexCoords, vTex(fAtlasPos, fFrameData.xy));
+    vec4 treeCol = vTexCol(uv);
+    tryDiscardAndSetDepth(treeCol.a);
 
-    vec4 tree = texture(image, uv);
-
-    tryDiscard(tree.a);
-
-    bool leafs = tree.a < 1 && tree.a > 0;
+     bool leafs = treeCol.a < 1 && treeCol.a > 0;
 
     float noise, cells = 0;
-	voronoi(uv, (time+seed)*3, 10,noise, cells);
-    vec4 voronoiCol = texture(image, mix(uv, uv+noise, .1));
+	voronoi(fTexCoords, (time+seed)*3, 10,noise, cells);
+
+    vec2 uv2 = mix(fTexCoords, fTexCoords+noise, .1);
+    vec4 voronoiCol = vTexCol(vTexUV(uv2, vTex(fAtlasPos, fFrameData.xy)));
+    fragColor = voronoiCol;
+
     vec4 finalLeafsCol = voronoiCol;
     finalLeafsCol.a = 1;
 
-    fragColor = leafs && voronoiCol.a < 1 && voronoiCol.a > 0 ? finalLeafsCol : tree;
+    fragColor = leafs && voronoiCol.a < 1 && voronoiCol.a > 0 ? finalLeafsCol : treeCol;
     
-    setDepth();
+   
 }

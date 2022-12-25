@@ -8,7 +8,6 @@ using Leopotam.EcsLite.Di;
 using OpenTK.Graphics.OpenGL4;
 using OpenTK.Windowing.Common;
 using OpenTK.Windowing.Desktop;
-using System.Data.Common;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
@@ -45,9 +44,10 @@ class MyGameWindow : GameWindow
     private int _framesCount;
 
     private double _averageTime;
-#endif
+#else
 
     private FileStream _logFile;
+#endif
 
     private const string USELESS_LOG = "will use VIDEO memory as the source for buffer object operations.";
 
@@ -157,7 +157,7 @@ class MyGameWindow : GameWindow
         Console.WriteLine($"{severity} {type} | {messageStr}");
     }
 
-    #endregion
+#endregion
 
     private void Init()
     {
@@ -216,11 +216,9 @@ class MyGameWindow : GameWindow
         ElementsBuffer.InitStatic();
         VertexBuffer.InitStatic();
 
-        LoadShaders(Paths.ShadersDirectory);
-        LoadShaders(Paths.MaterialsDirectory);
-        LoadTextures(Paths.TexturesDirectory);
-        LoadTextures(Paths.Combine(Paths.TexturesDirectory, "Tilesets"));
-        LoadSounds(Paths.SoundsDirectory);
+        LoadShaders(MyPath.ShadersDirectory);
+        LoadShaders(MyPath.MaterialsDirectory);
+        LoadSounds(MyPath.SoundsDirectory);
 
         _gameSystems = new EcsSystems(World, "game", sharedData);
         _renderSystems = new EcsSystems(World, "render", sharedData);
@@ -241,12 +239,16 @@ class MyGameWindow : GameWindow
         InitServices(new (IGameData, List<FieldInfo>)[] { (sharedData.gameData, gameRegularServices),
                              (sharedData.renderData, renderingRegularServices),
                              (sharedData.physicsData, physicsRegularServices)}, ServiceState.Regular);
+
+        var spriteBatcher = new SpriteBatcher();
+
         _gameSystems
             .Add(new InitMatierialsSystem())
             .Add(new InitLayersSystem())
             .Add(new LoadFontsSystem())
             .Add(new TimeSystem())
-            .AddGroupExt("PlayerCamera", false, new CameraFollowPlayerSystem())
+            .Add(new CreateAtlasSystem())
+            .AddGroupExt("PlayerCamera", false, new MoveCameraSystem())
            // .Add(new MoveCameraSystem())
 
             .Add(new SetMouseIngamePosSystem())
@@ -276,7 +278,8 @@ class MyGameWindow : GameWindow
 #if DEBUG
             .Add(new DebugCursorToolsSystem())
 #endif
-            .Inject(new LevelsService())
+            .Add(new DrawStaticItems())
+            .Inject(new LevelsService(), spriteBatcher)
             .Init();
 
         _physicsSystems
@@ -292,7 +295,7 @@ class MyGameWindow : GameWindow
             .Add(new RenderLayersSystem())
             .Add(new FinalRenderSystem())
             //   .Add(new ClearTextLayerSystem())
-            .Inject()
+            .Inject(spriteBatcher)
             .Init();
 
         InitServices(new (IGameData, List<FieldInfo>)[] { (sharedData.gameData, gameSystemServices),

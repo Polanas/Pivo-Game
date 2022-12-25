@@ -26,6 +26,8 @@ static class Content
 
     private static Dictionary<string, ShaderInfo> _shaderInfos = new();
 
+    private static Dictionary<string, VirtualTexture> _virtualTextures = new();
+
     private static int _emptyTexturesCounter;
 
     public static Shader ReloadShader(Shader shader)
@@ -81,6 +83,12 @@ static class Content
         _textures.Remove(texture.name);
     }
 
+    public static void DeleteVirtualTexture(string name) =>
+        _virtualTextures.Remove(name);
+
+    public static void DeleteVirtualTexture(VirtualTexture virtualTexture) =>
+        _virtualTextures.Remove(virtualTexture.Name);
+
     public static void DeleteTexture(string name)
     {
         var texture = _textures[name];
@@ -88,6 +96,9 @@ static class Content
         GL.DeleteTexture(texture);
         _textures.Remove(texture.name);
     }
+
+    public static void AddVirtualTexture(VirtualTexture virtualTexture) =>
+        _virtualTextures.Add(virtualTexture.Name, virtualTexture);
 
     public static Texture LoadTexture(string path)
     {
@@ -166,15 +177,23 @@ static class Content
 
     public static ShaderInfo GetShaderInfo(string name) => _shaderInfos[name];
 
-    public static Texture GetTexture(string name)
-    {
-        if (!_textures.ContainsKey(name))
-            return _textures["unknownTexture"];
+    public static Texture GetTexture(string name) => _textures[name];
 
-        return _textures[name];
+    public static VirtualTexture GetVirtualTexture(string name)
+    {
+        if (!_virtualTextures.ContainsKey(name))
+            return _virtualTextures["unknownTexture"];
+
+        return _virtualTextures[name];
     }
 
+    public static bool HasTexture(string name) => _textures.ContainsKey(name);
+
+    public static bool HasVirtualTexture(string name) => _virtualTextures.ContainsKey(name);
+ 
     public static Dictionary<string, Texture> GetTextures() => _textures;
+
+    public static Dictionary<string, VirtualTexture> GetVirtualTextures() => _virtualTextures;
 
     private static Texture LoadTextureInternal(ImageResult image, string name)
     {

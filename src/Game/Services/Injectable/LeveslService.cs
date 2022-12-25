@@ -15,7 +15,7 @@ enum LoadingMode
     Everything
 }
 
-class LevelsService : MyInjectableService
+class LevelsService : InjectableService
 {
 
     public Vector2 WorldSize { get; private set; }
@@ -39,7 +39,7 @@ class LevelsService : MyInjectableService
 
     private List<TileData> _optimizedTileData = new();
 
-    private const float TILE_SIZE = 8;
+    private const int TILE_SIZE = 8;
 
     private const int MAX_LOADING_TIME = 10;
 
@@ -132,28 +132,29 @@ class LevelsService : MyInjectableService
 
                     foreach (var tile in layer.AutoLayerTiles)
                     {
-                        var renderable = new Renderable();
-                        var sprite = new Sprite(Path.GetFileNameWithoutExtension(layer.TilesetRelPath), new Vector2i(8));
-                        sprite.Frame = (int)tile.T;
+                        var texture = Content.GetVirtualTexture(Path.GetFileNameWithoutExtension(layer.TilesetRelPath));
 
-                        renderable.sprite = sprite;
-                        sprite.layer = Layer.MiddlePixelized;
-                        sprite.position = new Vector2(tile.Px[0] + layer.GridSize / 2, tile.Px[1] + layer.GridSize / 2);
-                        sprite.position += new Vector2(subLevel.WorldX, subLevel.WorldY);
-                        sprite.depth = 1;
-                        sprite.flippedHorizontally = tile.F == 1 || tile.F == 3;
-                        sprite.flippedVertically = tile.F == 2 || tile.F == 3;
-
-                        Transform tr = new Transform(sprite.position, 0, sprite.size);
+                        Vector2 size = new Vector2(TILE_SIZE);
+                        size.X *= (tile.F & 0x10) == 0 ? 1 : -1;
+                        size.Y *= (tile.F & 0x01) == 0 ? 1 : -1;
+                        
+                        var position = new Vector2(tile.Px[0] + layer.GridSize / 2, tile.Px[1] + layer.GridSize / 2);
+                        position += new Vector2(subLevel.WorldX, subLevel.WorldY);
 
                         int entity = world.NewEntity();
-
                         _levelObjectsPool.Add(entity);
 
-                        ref var rend = ref _renderables.Add(entity);
-                        rend = renderable;
+                        Graphics.AddStaticRenderable(entity,
+                                                    Layer.MiddlePixelized,
+                                                    null,
+                                                    Content.GetVirtualTexture(Path.GetFileNameWithoutExtension(layer.TilesetRelPath)),
+                                                    position,
+                                                    new Vector4(255, 255, 255, 1),
+                                                    Utils.GetFrameData(texture, new Vector2i(TILE_SIZE), (int)tile.T),
+                                                    new Vector2(TILE_SIZE),
+                                                    0, 1);
 
-                        _tileData.Add(new TileData(tr.position, tr.size));
+                        _tileData.Add(new TileData(position, new Vector2(TILE_SIZE)));
                     }
                     break;
                 case "Entities":

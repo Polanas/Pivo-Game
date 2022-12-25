@@ -2,13 +2,13 @@
 
 layout (location = 0) in vec4 model1;
 layout (location = 1) in vec2 model2;
-layout (location = 2) in int textureId;
+layout (location = 2) in vec2 atlasPos;
 layout (location = 3) in float depth;
 layout (location = 4) in vec4 color;
 layout (location = 5) in ivec3 frameData;
 
 out vec2 fTexCoords;
-out flat int fTextureId;
+out flat vec2 fAtlasPos;
 out flat float fDepth;
 out flat vec4 fColor;
 out flat ivec3 fFrameData;
@@ -24,24 +24,6 @@ const vec2[] vertices = vec2[](
 
 #define identity (mat4(1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,0.0, 0.0, 0.0, 1.0))
 
-//  public static void CreateTranslation(float x, float y, float z, out Matrix4 result)
-//        {
-//            result = Identity;
-//            result.Row3.X = x;
-//            result.Row3.Y = y;
-//            result.Row3.Z = z;
-//        }
-
-/// [column][entry]
-mat4 translation(in vec3 translation)
-{
-    mat4 result = identity;
-    result[3][0] = translation.x;
-    result[3][1] = translation.y;
-    result[3][2] = translation.z;
-    
-    return result;
-}
 
 void main()
 {
@@ -52,11 +34,9 @@ void main()
     0,0,0,1
     );
 
-    mat4 transl = translation(vec3(.1));
-
     projection *= cameraMatrix;
 
-    fTextureId = textureId;
+    fAtlasPos = atlasPos;
     fTexCoords = vertices[gl_VertexID % 4];
     fDepth = depth;
     fColor = color;

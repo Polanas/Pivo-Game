@@ -24,13 +24,11 @@ class SubLevelTransitionSystem : MySystem
 
     private StateMachine<SubLevelTransitionState> _stateMachine;
 
-    private const float TRANSITION_FINISH_TIME = .85f;
+    private const float TRANSITION_FINISH_TIME = .51f;
 
     private LerpValue _lerpValue;
 
     private float _time;
-
-    private int _playerEntity;
 
     private Random _rand;
 
@@ -81,7 +79,7 @@ class SubLevelTransitionSystem : MySystem
     {
         UpdateMaterial(sharedData.physicsData.fixedDeltaTime);
 
-        Graphics.DrawMaterial(sharedData.renderData.layers["front"], _material, sharedData.gameData.camera.renderingPosition, -1);
+       //11 Graphics.DrawMaterial(sharedData.renderData.layers["front"], _material, sharedData.gameData.camera.renderingPosition, -1);
 
         foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
         {
@@ -115,6 +113,7 @@ class SubLevelTransitionSystem : MySystem
             }
 
             _levelService.Value.SetSublevel(_newSubLevel, LoadingMode.Tiles, false);
+            _stateMachine.CoroutineRunner.Run(ClearOldLevel());
         }
     }
 
@@ -126,13 +125,35 @@ class SubLevelTransitionSystem : MySystem
         if (_time >= TRANSITION_FINISH_TIME)
         {
             sharedData.eventBus.DestroyEvents<PlayerOutOfSubLevel>();
-            _levelService.Value.ClearOldLevelObjects();
             return SubLevelTransitionState.Idle;
         }
 
         return SubLevelTransitionState.ChangingScreen;
     }
 
+    private IEnumerator ClearOldLevel()
+    {
+        while (true)
+        {
+            if (_time > TRANSITION_FINISH_TIME)
+            {
+                _levelService.Value.ClearOldLevelObjects();
+                SetOldTilesRemovedState(true);
+                yield break;
+            }
+
+            yield return null;
+        }
+    }
+
+    private void SetOldTilesRemovedState(bool oldTilesRemoved)
+    {
+        foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+        {
+            pool.Get(e).oldTilesRemoved = oldTilesRemoved;
+            break;
+        }
+    }
     private void ChangingScreenBegin()
     {
         foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
@@ -147,9 +168,9 @@ class SubLevelTransitionSystem : MySystem
         _time = _material.tm = -.05f;
     }
 
-    private void UpdateMaterial(float time)
+    private void UpdateMaterial(float deltaTime)
     {
-        _time += time * 1.5f;
+        _time += deltaTime * 1.5f;
         _lerpValue.Run(_time);
         _material.tm = _lerpValue.Value;
     }

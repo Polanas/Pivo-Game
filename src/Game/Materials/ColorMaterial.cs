@@ -16,6 +16,6 @@ class ColorMaterial : Material
 
     public ColorMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, "colorM.frag");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, "colorM.frag");
     }
 }

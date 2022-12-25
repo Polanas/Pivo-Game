@@ -34,8 +34,9 @@ class Cool3DIntroSystem : MySystem
 
         SetSkyState(CAM_END_POS, SkyBackgroundSystem.TopColor, SkyBackgroundSystem.BottomColor);
         return;
-#endif
+#else
         _runner.Update(sharedData.physicsData.deltaTime);
+#endif
     }
 
     private void SetSkyState(float camPos, Vector3? col1 = null, Vector3? col2 = null)
@@ -99,10 +100,8 @@ class Cool3DIntroSystem : MySystem
 
         Content.DeleteShader(_material.Shader);
 
-#if !FAST_LOAD
         Content.DeleteTexture(_material.texture1);
         Content.DeleteTexture(_material.texture2);
-#endif
 
         _material = null;
     }

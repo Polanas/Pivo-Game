@@ -16,11 +16,11 @@ class Cool3DLIntroMaterial : Material
 
     public Cool3DLIntroMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, "cool3DIntro.frag");
-        vertPath = Paths.Combine(Paths.MaterialsDirectory, "materials.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, "cool3DIntro.frag");
+        vertPath = MyPath.Join(MyPath.MaterialsDirectory, "materials.vert");
 
-        texture1 = Content.LoadTexture(Paths.Combine(Paths.TexturesDirectory, @"Intro\sdfText1.png"));
-        texture2 = Content.LoadTexture(Paths.Combine(Paths.TexturesDirectory, @"Intro\sdfText2.png"));
+        texture1 = Content.LoadTexture(MyPath.Join(MyPath.TexturesDirectory, @"Intro\sdfText1.png"));
+        texture2 = Content.LoadTexture(MyPath.Join(MyPath.TexturesDirectory, @"Intro\sdfText2.png"));
 
         textures["sdfText1"] = texture1;
         textures["sdfText2"] = texture2;

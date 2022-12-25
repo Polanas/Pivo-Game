@@ -26,18 +26,8 @@ class RenderLayersSystem : MySystem
 
         ref var layersData = ref sharedData.eventBus.NewEventSingleton<PostProcessingGLData>();
 
-        // shader.Use();
-        //   shader.SetMatrix4("projection", sharedData.RenderData.pixelatedProjection);
-
-        //if (Keyboard.Pressed(Keys.K))
-        //      sharedData.RenderData.rectangleLayer.ScreenTexture.SaveRGBA(@"C:\Users\ivanh\Downloads\test1.png");
-
         _shader.Use();
-        // GL.BindVertexArray(_VAO);
-
-        //GL.BindFramebuffer(FramebufferTarget.Framebuffer, _FBO);
-        //GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, layersData.spritesTexture, 0);
-        //GL.Clear(ClearBufferMask.ColorBufferBit);
+   
         _VAO.RenderBegin();
         _FBO.Use();
         _FBO.UseTexture(layersData.uiTexture, FramebufferAttachment.ColorAttachment0);
@@ -108,9 +98,6 @@ class RenderLayersSystem : MySystem
         _VAO.SetVertexBuffer(VBO);
 
         _FBO = new FrameBuffer(DrawBuffersEnum.ColorAttachment0, ClearBufferMask.ColorBufferBit);
-
-        var EBO = new ElementsBuffer(6);
-        EBO.SetData(indices);
 
         GL.BindVertexArray(0);
     }

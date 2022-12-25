@@ -45,7 +45,7 @@ class CameraSystem : MySystem
             if (layer.pixelated)
                 sharedData.renderData.cameraLayerProjections[layer] = MyMath.CreateCameraMatrix(new Vector2(MathF.Floor(camPos.X * layer.cameraPosModifier + _camera.offset.X),
                                                                                                MathF.Floor(camPos.Y * layer.cameraPosModifier + _camera.offset.Y)),
-                                                                                               new Vector2(512));
+                                                                                               layer.Texture.Size);
             else sharedData.renderData.cameraLayerProjections[layer] = MyMath.CreateCameraMatrix(camPos * layer.cameraPosModifier + _camera.offset, (Vector2)MyGameWindow.ScreenSize / MyGameWindow.FullToPixelatedRatio);
         }
     }
@@ -53,7 +53,6 @@ class CameraSystem : MySystem
     public override void Run(EcsSystems systems)
     {
         UpdateProjections();
-
 
         _camera.renderingPosition = new Vector2
         {

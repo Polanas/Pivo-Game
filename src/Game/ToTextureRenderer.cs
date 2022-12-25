@@ -31,7 +31,7 @@ class ToTextureRenderer
         _time += deltaTime;
     }
 
-    public void Render(Material material)
+    public void Render(Material material, bool clear = true)
     {
         if ((material.Shader is var shader) && shader != _lastShader)
             material.Shader.Use();
@@ -40,7 +40,8 @@ class ToTextureRenderer
         GL.BindFramebuffer(FramebufferTarget.Framebuffer, _FBO);
         GL.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0, TextureTarget.Texture2D, material.TextureTarget, 0);
 
-        GL.Clear(ClearBufferMask.ColorBufferBit);
+        if (clear)
+            GL.Clear(ClearBufferMask.ColorBufferBit);
 
         GL.Viewport(0, 0, material.TextureTarget.Width, material.TextureTarget.Height);
 
@@ -59,7 +60,10 @@ class ToTextureRenderer
 
         foreach (var pair in material.Textures)
         {
-            shader.UseTexture(pair.Key, pair.Value, (TextureUnit)_textureUnit);
+            if (pair.Value == null)
+                continue;
+
+            shader.UseTexture(pair.Key, (Texture)pair.Value, (TextureUnit)_textureUnit);
             _textureUnit++;
         }
 
@@ -112,6 +116,9 @@ class ToTextureRenderer
             case UniformType.Bool:
                 shader.SetValue(uniformName, (bool)value);
                 break;
+            case UniformType.Matrix4:
+                shader.SetValue(uniformName, (Matrix4)value);
+                break;
         }
     }
 
@@ -125,7 +132,7 @@ class ToTextureRenderer
         _VAO = GL.GenVertexArray();
         _EAO = GL.GenBuffer();
         _FBO = GL.GenFramebuffer();
-        
+
         GL.BindVertexArray(_VAO);
 
         uint[] indices =

@@ -6,12 +6,6 @@ using System.Threading.Tasks;
 using OpenTK.Windowing.Desktop;
 using OpenTK.Graphics.OpenGL4;
 
-/*
-Notes:
-* r_something in component means it's a readonly field
-
-*/ 
-
 namespace Game;
 
 class Game
@@ -22,12 +16,12 @@ class Game
         SetWorkingPath();
 #endif
 
-        NativeWindowSettings nativeWindowSettings = new NativeWindowSettings()
+        NativeWindowSettings nativeWindowSettings = new()
         {
             Title = "",
             StartFocused = true,
             WindowBorder = OpenTK.Windowing.Common.WindowBorder.Hidden,
-            APIVersion = new(4, 3)
+            APIVersion = new(4, 3),
         };
 
         GameWindowSettings gameWindowSettings = new();

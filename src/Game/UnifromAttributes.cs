@@ -12,7 +12,8 @@ enum UniformType
     Vector3i,
     Vector4i,
     Int,
-    Bool
+    Bool,
+    Matrix4,
 }
 
 [AttributeUsage(AttributeTargets.Field)]

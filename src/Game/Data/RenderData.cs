@@ -9,13 +9,15 @@ namespace Game;
 class RenderData : IGameData
 {
 
-   // public Texture lightTexture;
+    // public Texture lightTexture;
 
-   // public Texture maskTexture;
+    // public Texture maskTexture;
 
     //public Texture distortedShadowsTexture;
 
     //public Texture shadowCastersTexture;
+
+    public Texture atlasTexture;
 
     public FrameEventArgs frameEventArgs;
 

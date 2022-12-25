@@ -85,7 +85,7 @@ void main()
     voronoi(uv-vec2(3.), rand*5. + 10., 5., n, c);
 
     float d = n;
-    d = step(d - tm*1.08 - .08, -.05);
+    d = step(d - tm*1.2 - .08, -.05);
 
     fragColor = vec4(vec3(0), !reverse ? d : 1.-d);
     

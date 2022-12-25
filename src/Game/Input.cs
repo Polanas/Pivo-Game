@@ -28,7 +28,7 @@ class Input
 
     public InputData InputData { get => _input._inputData; }
 
-    private readonly string _inputPath = Paths.Combine(Paths.SavesDirectory, "input.json");
+    private readonly string _inputPath = MyPath.Join(MyPath.SavesDirectory, "input.json");
 
     private InputData _inputData;
 

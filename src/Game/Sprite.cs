@@ -17,9 +17,9 @@ class Sprite
 
     public int FrameHeight { get; private set; }
 
-    public int TexWidth => _texture.Width;
+    public int TexWidth => _virtualTexture.Width;
 
-    public int TexHeight => _texture.Height;
+    public int TexHeight => _virtualTexture.Height;
 
     public int Frame
     {
@@ -31,9 +31,9 @@ class Sprite
         }
     }
 
-    public int FramesAmount => (_texture.Size.X / FrameWidth * (_texture.Size.Y / FrameHeight));
+    public int FramesAmount => _virtualTexture.Size.X / FrameWidth * (_virtualTexture.Size.Y / FrameHeight);
 
-    public Texture Texture => _texture;
+    public VirtualTexture VirtualTexture { get => _virtualTexture; set => _virtualTexture = value; }
 
     public float X { get => position.X; set => position.X = value; }
 
@@ -71,7 +71,7 @@ class Sprite
 
     private Animation? _current;
 
-    private Texture _texture;
+    private VirtualTexture _virtualTexture;
 
     private float _frameInc;
 
@@ -79,9 +79,9 @@ class Sprite
 
     private int _frameCount;
 
-    public Sprite(string textureName, Vector2i? frameSize = null, int depth = 0, Layer layer = null)
+    public Sprite(string virtualTextureName, Vector2i? frameSize = null, int depth = 0, Layer layer = null)
     {
-        _texture = Content.GetTexture(textureName);
+        _virtualTexture = Content.GetVirtualTexture(virtualTextureName);
 
         if (frameSize != null)
         {
@@ -90,8 +90,8 @@ class Sprite
         }
         else
         {
-            FrameWidth = _texture.Width;
-            FrameHeight = _texture.Height;
+            FrameWidth = _virtualTexture.Width;
+            FrameHeight = _virtualTexture.Height;
         }
 
         size = new Vector2(FrameWidth, FrameHeight);
@@ -100,9 +100,9 @@ class Sprite
         this.layer = layer ?? Layer.Middle;
     }
 
-    public Sprite(Texture texture, Vector2i? frameSize = null, int depth = 0, Layer layer = null)
+    public Sprite(VirtualTexture virtualTexture, Vector2i? frameSize = null, int depth = 0, Layer layer = null)
     {
-        _texture = texture;
+        _virtualTexture = virtualTexture;
 
         if (frameSize != null)
         {
@@ -111,8 +111,8 @@ class Sprite
         }
         else
         {
-            FrameWidth = _texture.Width;
-            FrameHeight = _texture.Height;
+            FrameWidth = _virtualTexture.Width;
+            FrameHeight = _virtualTexture.Height;
         }
 
         size = new Vector2(FrameWidth, FrameHeight);
@@ -133,9 +133,6 @@ class Sprite
         this.layer = layer ?? Layer.Middle;
     }
 
-    public void SetTexture(Texture texture) =>
-        _texture = texture;
-
     public void UpdateFrame(float deltaTime)
     {
         if (_current == null || _finished)
@@ -143,9 +140,9 @@ class Sprite
 
         _frameInc += deltaTime;
 
-        if (_frameInc >= 1f / (_current.Value.speed * 60f))
+        if (_frameInc >= _current.Value.delay)
         {
-            _frameInc = 0;
+            _frameInc -= Current.Value.delay;
             _frameCount++;
         }
 
@@ -167,13 +164,13 @@ class Sprite
         _lastFrame = _frameCount;
     }
 
-    public Sprite AddAnimation(string name, float speed, bool loop, int[] frames)
+    public Sprite AddAnimation(string name, float delay, bool loop, int[] frames)
     {
-        _animations.Add(name, new Animation(name, speed, loop, frames));
+        _animations.Add(name, new Animation(name, delay, loop, frames));
         return this;
     }
 
-    public Sprite AddAnimation(string name, float speed, bool loop, int startIndex, int endIndex)
+    public Sprite AddAnimation(string name, float delay, bool loop, int startIndex, int endIndex)
     {
         int framesCount = Math.Abs(endIndex - startIndex) + 1;
         int[] frames = new int[framesCount];
@@ -185,7 +182,7 @@ class Sprite
             else frames[i] = startIndex - i;
         }
 
-        _animations.Add(name, new Animation(name, speed, loop, frames));
+        _animations.Add(name, new Animation(name, delay, loop, frames));
         return this;
     }
 
@@ -212,6 +209,8 @@ class Sprite
 
         return;
     }
+
+    public void Draw() => Graphics.DrawSprite(this);
 
     public void ResetCurrentAnimation()
     {

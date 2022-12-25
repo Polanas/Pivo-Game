@@ -12,13 +12,13 @@ struct SpriteBatchItem
 
     public Vector3i frameData;
 
-    public Texture texture;
+    public ITexture texture;
 
     public Layer layer;
 
     public Material material;
 
-    public SpriteBatchItem(Vector4 projectionPart1, Vector2 projectionPart2, float depth, Vector4 color, Vector3i frameData, Texture texture, Layer layer, Material material)
+    public SpriteBatchItem(Vector4 projectionPart1, Vector2 projectionPart2, float depth, Vector4 color, Vector3i frameData, ITexture texture, Layer layer, Material material)
     {
         this.projectionPart1 = projectionPart1;
         this.projectionPart2 = projectionPart2;

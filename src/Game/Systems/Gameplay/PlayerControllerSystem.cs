@@ -31,6 +31,7 @@ class PlayerControllerSystem : MySystem
                     return;
                 }
 
+              //  SFX.Play("buttonPressed");
                 playerInputs.SetDefaultKeyData();
             }
         }

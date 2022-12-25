@@ -56,7 +56,7 @@ class MenuGUISystem : MySystem
     public override void OnGroupActivate()
     {
         _menuGUIHandler = new();
-        Sprite playButtonSprite = new(Content.LoadTexture(@"Content\Textures\GUI\playButton.png"), new Vector2i(47, 16));
+        Sprite playButtonSprite = new(Content.GetVirtualTexture("playButton"), new Vector2i(47, 16));
         playButtonSprite.layer = Layer.UI;
 
         playButtonSprite.AddAnimation("idle", 0, false, new int[1]);
@@ -71,7 +71,7 @@ class MenuGUISystem : MySystem
             if (playButtonSprite.alpha >= 1)
                 return;
 
-            playButtonSprite.alpha += 0.06f;
+            playButtonSprite.alpha +=    0.06f;
         };
         item.OnClick += () =>
         {
@@ -90,7 +90,6 @@ class MenuGUISystem : MySystem
 
     public override void OnGroupDiactivate()
     {
-        Content.DeleteTexture("playButton");
         _menuGUIHandler.Clear();
         _clicked = false;
     }

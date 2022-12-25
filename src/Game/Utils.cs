@@ -12,6 +12,8 @@ static class Utils
 
     public static Vector2i FullScreenTextureSize { get; private set; }
 
+    public static Vector3i DefaultFrameData { get; private set; }
+
     private static MyGameWindow _game;
 
     public static T GetSystem<T>() where T : MySystem
@@ -27,13 +29,13 @@ static class Utils
     public static Vector2 ToIngameSpace(Vector2 position)
     {
         Camera camera = _game.SharedData.gameData.camera;
-        return (position + camera.position - camera.offset - (Vector2)MyGameWindow.ScreenSize / MyGameWindow.FullToPixelatedRatio / 2) * camera.zoom;
+        return (position + camera.renderingPosition - camera.offset - (Vector2)MyGameWindow.ScreenSize / MyGameWindow.FullToPixelatedRatio / 2) * camera.zoom;
     }
 
     public static Vector2 ToScreenSpace(Vector2 position)
     {
         Camera camera = _game.SharedData.gameData.camera;
-        return position / camera.zoom - camera.position + camera.offset + ((Vector2)MyGameWindow.ScreenSize / (MyGameWindow.FullToPixelatedRatio) / 2);
+        return position / camera.zoom - camera.renderingPosition + camera.offset + ((Vector2)MyGameWindow.ScreenSize / (MyGameWindow.FullToPixelatedRatio) / 2);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -64,6 +66,8 @@ static class Utils
 
         Vector2 texSize = (Vector2)MyGameWindow.ScreenSize / MyGameWindow.FullToPixelatedRatio;
         FullScreenTextureSize = new Vector2i((int)MathF.Round(texSize.X), (int)MathF.Round(texSize.Y));
+
+        DefaultFrameData = new Vector3i(1, 1, 0);
     }
 
     public static bool IsInteger<T>() where T : struct
@@ -88,4 +92,7 @@ static class Utils
 
         }
     }
+
+    public static Vector3i GetFrameData(VirtualTexture texture, Vector2i frameSize, int frame) =>
+          texture == null ? new Vector3i(1, 1, 0) : new(texture.Width / frameSize.X, texture.Height / frameSize.Y, frame);
 }

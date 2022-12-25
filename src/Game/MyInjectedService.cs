@@ -3,7 +3,7 @@ using Leopotam.EcsLite.Di;
 
 namespace Game;
 
-class MyInjectableService : IEcsService
+class InjectableService : IEcsService
 {
 
     private bool _wasInited;

@@ -51,7 +51,7 @@ class SetLayerProjectionsSystem : MySystem
                 fracCamPos.Y *= -1;
                 fracCamPos *= MyGameWindow.FullToPixelatedRatio;
 
-                model = MyMath.CreateTransformMatrix(MyGameWindow.ScreenSize / 2 - fracCamPos, new Vector2(512) * MyGameWindow.FullToPixelatedRatio, layer.angle);
+                model = MyMath.CreateTransformMatrix(MyGameWindow.ScreenSize / 2 - fracCamPos, (Vector2)layer.Texture.Size * MyGameWindow.FullToPixelatedRatio, layer.angle);
             }
             else model = MyMath.CreateTransformMatrix(MyGameWindow.ScreenSize / 2, MyGameWindow.ScreenSize, layer.angle);
 

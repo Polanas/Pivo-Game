@@ -17,7 +17,7 @@ class TransitionMaterial : Material
 
     public TransitionMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, @"transition.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, @"transition.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

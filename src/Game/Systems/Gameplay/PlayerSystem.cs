@@ -8,6 +8,7 @@ using Box2DSharp.Common;
 using Box2DSharp.Collision.Shapes;
 using Box2DSharp.Dynamics;
 using System.Data;
+using OpenTK.Graphics.ES20;
 
 namespace Game;
 
@@ -82,6 +83,7 @@ class PlayerSystem : MySystem
     public int PlayerPrefab(Vector2 position)
     {
         sharedData.gameData.camera.position = position;
+        float animSpeed = 1f / 8f;
 
         Sprite playerSprite = new("player", new Vector2i(32), 2, Layer.Middle);
         playerSprite.offset = new Vector2(0, -3 + 1 / MyGameWindow.FullToPixelatedRatio);
@@ -89,18 +91,18 @@ class PlayerSystem : MySystem
           .AddAnimation("idle", 0, false, new int[1])
           .AddAnimation("idlem1", 0, false, new int[] { 7 })
           .AddAnimation("idlem2", 0, false, new int[] { 14 })
-          .AddAnimation("walk", 0.16f, true, 1, 6)
-          .AddAnimation("walkm1", 0.16f, true, 8, 13)
-          .AddAnimation("walkm2", 0.16f, true, 15, 20)
-          .AddAnimation("jump", 0.16f, false, new int[] { 21, 22, 23 })
-          .AddAnimation("jumpm1", 0.16f, false, new int[] { 21 + 5, 22 + 5, 23 + 5 })
-          .AddAnimation("jumpm2", 0.16f, false, new int[] { 21 + 10, 22 + 10, 23 + 10 })
-          .AddAnimation("float", 0.16f, false, new int[] { 23, 22, 25, 24 })
-          .AddAnimation("floatm1", 0.16f, false, new int[] { 23 + 5, 22 + 5, 25 + 5, 24 + 5 })
-          .AddAnimation("floatm2", 0.16f, false, new int[] { 23 + 10, 22 + 10, 25 + 10, 24 + 10 })
-          .AddAnimation("float2", 0.16f, false, new int[] { 25 })
-          .AddAnimation("float2m1", 0.16f, false, new int[] { 30 })
-          .AddAnimation("float2m2", 0.16f, false, new int[] { 35 })
+          .AddAnimation("walk", animSpeed, true, 1, 6)
+          .AddAnimation("walkm1", animSpeed, true, 8, 13)
+          .AddAnimation("walkm2", animSpeed, true, 15, 20)
+          .AddAnimation("jump", animSpeed, false, new int[] { 21, 22, 23 })
+          .AddAnimation("jumpm1", animSpeed, false, new int[] { 21 + 5, 22 + 5, 23 + 5 })
+          .AddAnimation("jumpm2", animSpeed, false, new int[] { 21 + 10, 22 + 10, 23 + 10 })
+          .AddAnimation("float", animSpeed, false, new int[] { 23, 22, 25, 24 })
+          .AddAnimation("floatm1", animSpeed, false, new int[] { 23 + 5, 22 + 5, 25 + 5, 24 + 5 })
+          .AddAnimation("floatm2", animSpeed, false, new int[] { 23 + 10, 22 + 10, 25 + 10, 24 + 10 })
+          .AddAnimation("float2", animSpeed, false, new int[] { 25 })
+          .AddAnimation("float2m1", animSpeed, false, new int[] { 30 })
+          .AddAnimation("float2m2", animSpeed, false, new int[] { 35 })
           .SetAnimation("idle");
 
         Vector2 playerSize = new Vector2(14 - 1 / MyGameWindow.FullToPixelatedRatio * 2, 10);
@@ -109,7 +111,7 @@ class PlayerSystem : MySystem
         sharedData.physicsData.physicsFactory.AddDynamicBody(
             player,
             new Transform(position, playerSize),
-            new(PhysicsBodyType.Player), 1, true, 0, 0.1f);
+            new(PhysicsBodyType.Player, world.PackEntity(player)), 1, true, 0, 0.1f);
 
         world.AddComponent(player, new Renderable(playerSprite));
         world.AddComponent<Player>(player);
@@ -118,12 +120,30 @@ class PlayerSystem : MySystem
         _playerBody = world.GetComponent<DynamicBody>(player).box2DBody;
         _playerSprite = playerSprite;
 
-        sharedData.physicsData.contcactListener.AddBeginAndEndEvent((Body b1, Body b2) =>
-                                                                                    { _isGrounded = true; },
-                                                                                    (Body b1, Body b2) =>
-                                                                                    { _isGrounded = false; },
-                                                                                    PhysicsBodyType.PlayerSensor,
-                                                                                    PhysicsBodyType.Block, false);
+        ContactListenerEvent onBeginFunc = (Body b1, Body b2) =>
+        {
+            var userData = b1.GetUserData();
+            world.RepackEntity(ref userData.entity, out int e);
+            ref var playerC = ref _playerFilter.Pools.Inc1.Get(e);
+
+            playerC.wasGrounded = _isGrounded;
+            _isGrounded = true;
+        };
+
+        ContactListenerEvent onEndFunc = (Body b1, Body b2) =>
+        {
+            var userData = b1.GetUserData();
+            world.RepackEntity(ref userData.entity, out int e);
+            var playerC = _playerFilter.Pools.Inc1.Get(e);
+
+            if (!(_isGrounded && playerC.wasGrounded))
+                _isGrounded = false;
+        };
+
+        sharedData.physicsData.contcactListener.AddBeginAndEndEvent(onBeginFunc,
+                                                                    onEndFunc,
+                                                                    PhysicsBodyType.PlayerSensor,
+                                                                    PhysicsBodyType.Block, false);
 
         sharedData.physicsData.physicsFactory.AddSensor(_playerBody, playerSize, new(PhysicsBodyType.PlayerSensor));
         _noTongueAnimation = playerSprite.Current.Value.name;
@@ -153,7 +173,7 @@ class PlayerSystem : MySystem
                 timerCooyote.ClearStart();
             }
 
-            if (timerCooyote.Elapsed > .25)
+            if (timerCooyote.Elapsed > .15f)
             {
                 canCoyoteJump = false;
                 timerCooyote.ClearStop();
@@ -170,7 +190,7 @@ class PlayerSystem : MySystem
                 canJump = false;
             }
 
-            if (timerInput.Elapsed >= .25f)
+            if (timerInput.Elapsed >= .15f)
             {
                 timerInput.ClearStop();
                 canJump = false;
@@ -253,7 +273,7 @@ class PlayerSystem : MySystem
             _playerSprite.SetAnimation("jump");
         }
 
-        if (MathHelper.ApproximatelyEquivalent(velocity.Y, 0, 0.001f))
+        if (MathHelper.ApproximatelyEquivalent(velocity.Y, 0, 0.001f) && _isGrounded)
         {
             if (MathHelper.ApproximatelyEquivalent(velocity.X, 0, 0.001f))
             {
@@ -373,9 +393,6 @@ class PlayerSystem : MySystem
             break;
         }
 
-        //if (sharedData.eventBus.HasEvents<PlayerOutOfSubLevel>())
-        //     _isGrounded = true; //TODO: fix this
-
         foreach (var e in _playerFilter.Value)
         {
             ref var player = ref _playerFilter.Pools.Inc1.Get(e);
@@ -388,7 +405,6 @@ class PlayerSystem : MySystem
                 ref var playerOutOfSubLevel = ref sharedData.eventBus.NewEvent<PlayerOutOfSubLevel>();
                 playerOutOfSubLevel.playerTransform = transform;
                 playerOutOfSubLevel.direction = (sbyte)(_playerBody.GetLinearVelocity().X < 0 ? -1 : 1);
-                playerOutOfSubLevel.isGrounded = _isGrounded;
 
                 _playerInputs.SetEmptyKeyData();
                 _playerInputs.SetDirectionKeyData(playerOutOfSubLevel.direction);
@@ -436,26 +452,41 @@ class PlayerSystem : MySystem
 
     private IEnumerator TransitionCoroutine()
     {
+
         PlayerOutOfSubLevel playerOutOfSubLevel = default;
+        int playerOutOfSubLevelE = 0;
+        EcsPool<PlayerOutOfSubLevel> playerOutOfSubLevelPool = null;
+        bool wasGrounded = false;
 
         foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+        {
             playerOutOfSubLevel = pool.Get(e);
-        
+            playerOutOfSubLevelE = e;
+            playerOutOfSubLevelPool = pool;
+        }
 
         while (true)
         {
             if (!sharedData.eventBus.HasEvents<PlayerOutOfSubLevel>())
                 yield break;
 
-            if (playerOutOfSubLevel.isGrounded && !_isGrounded)
+            foreach (var e in sharedData.eventBus.GetEventBodies<PlayerOutOfSubLevel>(out var pool))
+                playerOutOfSubLevel = pool.Get(e);
+
+            if (playerOutOfSubLevel.oldTilesRemoved)
             {
-                _isGrounded = true;
-                yield break;
+                bool a = _isGrounded;
             }
+
+            wasGrounded = _isGrounded;
 
             yield return null;
         }
     }
+
+    //  private void SetPlayerOutOfSubLevelGroundedState(bool isGrounded, int entity, EcsPool<PlayerOutOfSubLevel> playerPool) =>
+    //    playerPool.Get(entity).isGrounded = isGrounded;
+
 
     private TongueState TongueOut()
     {
@@ -543,7 +574,7 @@ class PlayerSystem : MySystem
     private void TongueOutBegin()
     {
         var playerPos = _playerBody.GetPixelatedPosition();
-        var mousePos = sharedData.gameData.inGameMousePosition;
+        var mousePos = sharedData.gameData.ingameMousePosition;
         if (_playerSprite.flippedHorizontally)
             mousePos = mousePos.Mirrored(new Vector2(playerPos.X, mousePos.Y));
 

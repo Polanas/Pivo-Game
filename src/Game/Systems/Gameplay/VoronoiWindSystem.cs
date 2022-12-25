@@ -10,8 +10,6 @@ namespace Game;
 class VoronoiWindSystem : MySystem
 {
 
-    private EcsPoolInject<HasWindMaterial> _hasWindMaterial;
-
     private Random _random;
 
     public override void Init(EcsSystems systems)

@@ -17,6 +17,7 @@ class PhysicsUserData
     {
         if (entity != null)
             this.entity = entity.Value;
-        this.bodyType = userData;
+
+        bodyType = userData;
     }
 }

@@ -14,7 +14,7 @@ class VoronoiWindMaterial : Material
 
     public VoronoiWindMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, @"voronoiWind.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, @"voronoiWind.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

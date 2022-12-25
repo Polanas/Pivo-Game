@@ -9,7 +9,7 @@ using StbImageWriteSharp;
 
 namespace Game;
 
-class Texture
+class Texture : ITexture
 {
     public int Handle { get; private set; }
 
@@ -49,4 +49,8 @@ class Texture
             writer.WritePng(data, Width, Height, colorComponents, fs);
         }
     }
+
+    public int GetWidth() => Width;
+
+    public int GetHeight() => Height;
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using OpenTK.Graphics.OpenGL4;
@@ -20,9 +21,9 @@ abstract class Material
 
     public Vector2 QuadSize { get; set; }
 
-    public Dictionary<string, Texture> Textures => textures;
+    public Dictionary<string, ITexture> Textures => textures;
 
-    protected Dictionary<string, Texture> textures = new();
+    protected Dictionary<string, ITexture> textures = new();
 
     protected string fragPath;
 
@@ -32,9 +33,6 @@ abstract class Material
 
     public Material() { }
 
-    /// <summary>
-    /// If localFragPath or localVertPath is null, protected fields will be used as path instead.
-    /// </summary>
     public static T Create<T>(string fragPath = null, string vertPath = null) where T : Material, new()
     {
         var material = new T();
@@ -48,9 +46,6 @@ abstract class Material
         return material;
     }
 
-    /// <summary>
-    /// If localFragPath or localVertPath is null, protected fields will be used as path instead.
-    /// </summary>
     public static T Create<T>(Vector2 quadSize, string localFragPath = null, string localVertPath = null) where T : Material, new()
     {
         var material = new T();
@@ -65,9 +60,6 @@ abstract class Material
         return material;
     }
 
-    /// <summary>
-    /// If localFragPath or localVertPath is null, protected fields will be used as path instead.
-    /// </summary>
     public static T Create<T>(Texture textureTarget, string localFragPath = null, string localVertPath = null) where T : Material, new()
     {
         var material = new T();
@@ -82,7 +74,6 @@ abstract class Material
 
         return material;
     }
-
 
     public void Dispose()
     {

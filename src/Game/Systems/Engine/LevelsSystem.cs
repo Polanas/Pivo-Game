@@ -40,6 +40,6 @@ class LevelsSystem : MySystem
     {
         base.OnGroupActivate();
 
-        _levelsService.Value.SetLevel(Paths.Combine(Paths.LevelsDirectory, "level1.json"), LoadingMode.Everything);
+        _levelsService.Value.SetLevel(MyPath.Join(MyPath.LevelsDirectory, "level1.json"), LoadingMode.Everything);
     }
 }

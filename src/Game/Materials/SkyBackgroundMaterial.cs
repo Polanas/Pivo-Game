@@ -19,7 +19,7 @@ class SkyBackgroundMaterial : Material
 
     public SkyBackgroundMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, @"skyBackground.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, @"skyBackground.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

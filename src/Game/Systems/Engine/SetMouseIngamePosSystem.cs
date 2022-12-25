@@ -10,6 +10,6 @@ class SetMouseIngamePosSystem : MySystem
 {
     public override void Run(EcsSystems systems)
     {
-        sharedData.gameData.inGameMousePosition = Utils.ToIngameSpace(Mouse.ScreenPosition);
+        sharedData.gameData.ingameMousePosition = Utils.ToIngameSpace(Mouse.ScreenPosition);
     }
 }

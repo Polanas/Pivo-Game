@@ -77,7 +77,7 @@ class BeerSystem : MySystem
         var sprite = new Sprite("beerCan", new Vector2i(32), 2, Layer.Middle);
         sprite
             .AddAnimation("idle", 0, false, new int[] { sprite.FramesAmount - 1 })
-            .AddAnimation("beering", 0.05f, true, new int[] { 0, 1, 2, 3, 4, 5, 5 })
+            .AddAnimation("beering", 1f/6f, true, new int[] { 0, 1, 2, 3, 4, 5, 5 })
             .SetAnimation("beering");
 
         sprite.material = Material.Create<BeerMaterial>();
@@ -98,7 +98,6 @@ class BeerSystem : MySystem
         base.OnGroupActivate();
 
         BeerPrefab(world.NewEntity(), new Vector2(-9, -27));
-        //BeerPrefab(world.NewEntity(), new Vector2(-9, 27));
 
         _runner = new();
     }

@@ -67,7 +67,7 @@ class RenderTextSystem : RenderSystem
         if (centered)
             size = GetTextSize(text, fontName, scale);
 
-        shader.SetValue("textColor", color);
+        shader.SetValue("textColor", (Vector3)color);
         shader.SetValue("alpha", alpha);
 
         for (int i = 0; i < text.Length; i++)

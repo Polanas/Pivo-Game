@@ -31,8 +31,6 @@ class Layer
 
     public readonly bool isUI;
 
-    public bool autoCleared = true;
-
     public float cameraPosModifier;
 
     public int depth;

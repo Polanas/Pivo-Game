@@ -14,7 +14,7 @@ class BeerMaterial : Material
 
     public BeerMaterial()
     {
-        fragPath = Paths.Combine(Paths.MaterialsDirectory, "beerMaterial.frag");
-        vertPath = Paths.Combine(Paths.ShadersDirectory, @"batchShader\shader.vert");
+        fragPath = MyPath.Join(MyPath.MaterialsDirectory, "beerMaterial.frag");
+        vertPath = MyPath.Join(MyPath.ShadersDirectory, @"batchShader\shader.vert");
     }
 }

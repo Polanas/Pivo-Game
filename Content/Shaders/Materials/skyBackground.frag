@@ -34,7 +34,7 @@ void main()
 
 	vec3 mixedCol = mix(vec3(0),vec3(1), uv.y+camY/quadSize.y);
 
-    mixedCol += ditherTable[int( fragCoords.x ) % 4][int( fragCoords.y ) % 4]*0.02;//*0.1;
+    mixedCol += ditherTable[int( fragCoords.x ) % 4][int( fragCoords.y ) % 4]*0.02;
 	mixedCol = floor(mixedCol*4.)/4.;
 
     vec3 col = mix(col1, col2, (cos(mixedCol.x*3)+1)/2);
